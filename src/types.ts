@@ -8,6 +8,8 @@ export interface Task {
   created_at: string; // ISO8601
   updated_at: string; // ISO8601
   archived_at?: string; // ISO8601 when archived, undefined otherwise
+  content_updated_at?: string; // ISO8601 when content was last updated
+  content_format?: 'markdown' | 'text';
   last_event_seq: number; // optimistic concurrency per-task
   version: number; // schema version for forward compatibility
 }
@@ -18,6 +20,7 @@ export type EventType =
   | 'state_changed'
   | 'log_appended'
   | 'summary_set'
+  | 'content_set'
   | 'archived'
   | 'unarchived';
 
@@ -53,6 +56,11 @@ export interface SummarySetEvent extends EventBase {
   payload: { summary: string };
 }
 
+export interface ContentSetEvent extends EventBase {
+  type: 'content_set';
+  payload: { bytes: number; format: 'markdown' | 'text'; sha256?: string };
+}
+
 export interface ArchivedEvent extends EventBase {
   type: 'archived';
   payload: { reason?: string };
@@ -69,6 +77,7 @@ export type TaskEvent =
   | StateChangedEvent
   | LogAppendedEvent
   | SummarySetEvent
+  | ContentSetEvent
   | ArchivedEvent
   | UnarchivedEvent;
 
@@ -104,6 +113,7 @@ export interface TimelineView {
 export interface StoreOptions {
   baseDir: string; // directory where tasks/ live
   maxLogMessageLength?: number;
+  maxContentBytes?: number;
 }
 
 export interface MutationOptions {
@@ -117,4 +127,3 @@ export interface PaginationOptions {
 }
 
 export const CURRENT_TASK_VERSION = 1;
-

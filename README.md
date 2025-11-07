@@ -18,7 +18,7 @@ Project Layout
 - `src/id.ts` — minimal ULID generator (time-sortable IDs)
 - `src/store.ts` — file-backed store and operations
 - `src/index.ts` — MCP server (stdio transport)
-- `tasks/` — data directory (created on first run)
+- `.wind-task/` — data directory (created on first run)
 
 Quick Start
 
@@ -35,13 +35,15 @@ MCP Surface
   - `tasks://board` — board with `TODO`, `ACTIVE`, `DONE`, `ARCHIVED` columns (JSON)
   - `tasks://task/{id}` — full `task.json` (JSON)
   - `tasks://timeline/{id}` — `events.jsonl` rendered as JSON array (JSON)
+  - `tasks://content/{id}` — long-form task content (text/markdown)
 
 - Tools
   - `create_task(title, summary?, actor)`
   - `retitle(id, title, expected_last_seq, actor)`
-  - `set_state(id, state, expected_last_seq, actor)` — accepts legacy `IN_DEV`/`FINISHED`
+  - `set_state(id, state, expected_last_seq, actor)`
   - `append_log(id, message, expected_last_seq, actor)`
   - `set_summary(id, summary, expected_last_seq, actor)`
+  - `set_content(id, content, expected_last_seq, actor, format?)`
   - `archive(id, reason?, expected_last_seq, actor)`
   - `unarchive(id, expected_last_seq, actor)`
 
@@ -98,7 +100,7 @@ Terminal TUI (developer visualization)
 
 - Controls:
   - Column mode: `←/→` switch columns, `Enter` enters column
-  - Task mode: `↑/↓` move selection, `←/→` switch columns (preserve row), `Enter` opens timeline, `Esc` back
+  - Task mode: `↑/↓` move selection, `←/→` switch columns (preserve row), `Enter` opens content, `t` opens timeline, `Esc` back
   - Timeline overlay: `Esc` closes overlay
   - Common: `r` reload, `q`/`Ctrl+C` quit
 
@@ -114,3 +116,4 @@ Notes
 - Archived tasks block all mutations except `unarchive`
 - All mutating tools require `expected_last_seq` to guard against races
 - IDs are ULIDs for stable sorting and readability
+- Task content is stored in `.wind-task/<id>/content.md` and exposed via `tasks://content/{id}`

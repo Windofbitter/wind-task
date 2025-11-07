@@ -46,10 +46,20 @@ async function main() {
   if (!id) throw new Error('Create did not return task id');
   console.log('created id:', id);
 
+  // Set content
+  const contentRes = await client.request({
+    method: 'tools/call',
+    params: { name: 'set_content', arguments: { id, content: '# Smoke Content\n\nThis is a test.', expected_last_seq: seq, actor: 'agent:cli', format: 'markdown' } },
+  }, CallToolResultSchema);
+  const contentText = textFromContent(contentRes.content);
+  const contentSet = JSON.parse(contentText);
+  const seqContent = contentSet.task?.last_event_seq;
+  console.log('set content seq:', seqContent);
+
   // Append log
   const appendRes = await client.request({
     method: 'tools/call',
-    params: { name: 'append_log', arguments: { id, message: 'hello from smoke', expected_last_seq: seq, actor: 'agent:cli' } },
+    params: { name: 'append_log', arguments: { id, message: 'hello from smoke', expected_last_seq: seqContent, actor: 'agent:cli' } },
   }, CallToolResultSchema);
   const appendText = textFromContent(appendRes.content);
   const appended = JSON.parse(appendText);

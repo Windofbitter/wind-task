@@ -58,6 +58,12 @@ async function main() {
           description: 'Event stream for a given task id',
           mimeType: 'application/json',
         },
+        {
+          uriTemplate: 'tasks://content/{id}',
+          name: 'Task Content',
+          description: 'Long-form content for a given task id',
+          mimeType: 'text/markdown',
+        },
       ],
     } as any;
   });
@@ -69,7 +75,7 @@ async function main() {
       contents: [
         {
           uri,
-          mimeType: 'application/json',
+          mimeType: uri.startsWith('tasks://content/') ? 'text/markdown' : 'application/json',
           text: jsonText,
         },
       ],
@@ -111,7 +117,7 @@ async function main() {
         },
         {
           name: 'set_state',
-          description: 'Set task state to TODO|ACTIVE|DONE (accepts legacy IN_DEV/FINISHED)',
+          description: 'Set task state to TODO|ACTIVE|DONE',
           inputSchema: {
             type: 'object',
             properties: {
@@ -151,6 +157,22 @@ async function main() {
               actor: { type: 'string' },
             },
             required: ['id', 'summary', 'expected_last_seq', 'actor'],
+            additionalProperties: false,
+          },
+        },
+        {
+          name: 'set_content',
+          description: 'Set or replace the long-form task content (markdown)',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              id: { type: 'string' },
+              content: { type: 'string' },
+              expected_last_seq: { type: 'number' },
+              actor: { type: 'string' },
+              format: { type: 'string', enum: ['markdown', 'text'] },
+            },
+            required: ['id', 'content', 'expected_last_seq', 'actor'],
             additionalProperties: false,
           },
         },
@@ -217,6 +239,11 @@ async function main() {
           task = await store.setSummary(String(id), String(summary), { expected_last_seq: Number(expected_last_seq), actor: String(actor) });
           break;
         }
+        case 'set_content': {
+          const { id, content, expected_last_seq, actor, format } = args || {};
+          task = await store.setContent(String(id), String(content), { expected_last_seq: Number(expected_last_seq), actor: String(actor) }, format ? String(format) as any : 'markdown');
+          break;
+        }
         case 'archive': {
           const { id, reason, expected_last_seq, actor } = args || {};
           task = await store.archive(String(id), reason != null ? String(reason) : undefined, { expected_last_seq: Number(expected_last_seq), actor: String(actor) });
@@ -281,6 +308,11 @@ async function renderResourceUri(store: TaskStore, uri: string): Promise<string>
     const id = uri.substring('tasks://timeline/'.length);
     const v = await store.timelineView(id);
     return JSON.stringify(v, null, 2);
+  }
+  if (uri.startsWith('tasks://content/')) {
+    const id = uri.substring('tasks://content/'.length);
+    const v = await store.readContent(id);
+    return v.content; // plain text/markdown
   }
   throw new Error(`Unknown resource URI: ${uri}`);
 }

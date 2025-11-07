@@ -8,7 +8,8 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "dev": "tsx src/index.ts",
-    "tui": "tsx src/tui.ts"
+    "tui": "tsx src/tui.ts",
+    "migrate:content": "node scripts/migrate-content.mjs"
   },
   "bin": {
     "mcp-task-server": "dist/index.js"

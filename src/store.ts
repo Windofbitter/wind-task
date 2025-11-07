@@ -28,22 +28,15 @@ function isValidState(state: string): state is TaskState {
   return state === 'TODO' || state === 'ACTIVE' || state === 'DONE';
 }
 
-function mapLegacyState(input: string): TaskState {
-  const up = input.toUpperCase();
-  if (isValidState(up)) return up;
-  if (up === 'IN_DEV') return 'ACTIVE';
-  if (up === 'FINISHED') return 'DONE';
-  if (up === 'TODO') return 'TODO';
-  throw new Error(`Unknown state: ${input}`);
-}
-
 export class TaskStore {
   private baseDir: string;
   private maxLogMessageLength: number;
+  private maxContentBytes: number;
 
   constructor(options: StoreOptions) {
     this.baseDir = options.baseDir;
     this.maxLogMessageLength = options.maxLogMessageLength ?? 2000;
+    this.maxContentBytes = options.maxContentBytes ?? 200000; // 200 KB default
   }
 
   private taskDir(id: string): string {
@@ -56,6 +49,10 @@ export class TaskStore {
 
   private eventsFile(id: string): string {
     return join(this.taskDir(id), 'events.jsonl');
+  }
+
+  private contentFile(id: string): string {
+    return join(this.taskDir(id), 'content.md');
   }
 
   async init(): Promise<void> {
@@ -138,7 +135,9 @@ export class TaskStore {
     const task = await this.getTask(id);
     this.ensureMutable(task);
     this.ensureExpectedSeq(task, opts.expected_last_seq);
-    const to = mapLegacyState(stateInput);
+    const up = String(stateInput).toUpperCase();
+    if (!isValidState(up)) throw new Error(`Unknown state: ${stateInput}`);
+    const to = up;
     const from = task.state;
     if (from === to) return task; // no-op
     const at = nowISO();
@@ -179,6 +178,51 @@ export class TaskStore {
     await this.appendEvent(id, event);
     await this.writeTask(task);
     return task;
+  }
+
+  async setContent(
+    id: string,
+    content: string,
+    opts: MutationOptions,
+    format: 'markdown' | 'text' = 'markdown'
+  ): Promise<Task> {
+    const bytes = Buffer.byteLength(content, 'utf8');
+    if (bytes > this.maxContentBytes) {
+      throw new Error(`Content exceeds max size ${this.maxContentBytes} bytes`);
+    }
+    const task = await this.getTask(id);
+    this.ensureMutable(task);
+    this.ensureExpectedSeq(task, opts.expected_last_seq);
+    const at = nowISO();
+    await fs.writeFile(this.contentFile(id), content, 'utf8');
+    const event: TaskEvent = {
+      seq: task.last_event_seq + 1,
+      type: 'content_set',
+      at,
+      actor: opts.actor,
+      payload: { bytes, format },
+    } as any;
+    task.content_updated_at = at;
+    task.content_format = format;
+    task.updated_at = at;
+    task.last_event_seq = event.seq;
+    await this.appendEvent(id, event);
+    await this.writeTask(task);
+    return task;
+  }
+
+  async readContent(id: string): Promise<{ content: string; format: 'markdown' | 'text' }> {
+    try {
+      const buf = await fs.readFile(this.contentFile(id), 'utf8');
+      const t = await this.getTask(id);
+      return { content: buf, format: t.content_format ?? 'markdown' };
+    } catch (err: any) {
+      if (err?.code === 'ENOENT') {
+        // No content yet
+        return { content: '', format: 'markdown' };
+      }
+      throw err;
+    }
   }
 
   async archive(id: string, reason: string | undefined, opts: MutationOptions): Promise<Task> {
@@ -288,4 +332,3 @@ export class TaskStore {
     return { id, generated_at: nowISO(), events };
   }
 }
-

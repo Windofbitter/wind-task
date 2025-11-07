@@ -82,6 +82,8 @@ function formatEventTitle(event: any): string {
       return 'Title changed';
     case 'summary_set':
       return 'Summary updated';
+    case 'content_set':
+      return 'Content updated';
     case 'log_appended': {
       const msg = event.payload.message;
       return msg.length > 50 ? msg.substring(0, 47) + '...' : msg;
@@ -119,6 +121,10 @@ function formatEventDetails(event: any): string[] {
       break;
     case 'summary_set':
       lines.push(event.payload.summary);
+      break;
+    case 'content_set':
+      lines.push(`Format: ${event.payload.format}`);
+      if (typeof event.payload.bytes === 'number') lines.push(`Bytes: ${event.payload.bytes}`);
       break;
     case 'log_appended':
       lines.push(event.payload.message);
@@ -174,11 +180,52 @@ function showEventDetails(
   detailsBox.key(['escape', 'q'], close);
 }
 
-async function showTimeline(
+async function showContent(
   screen: blessed.Widgets.Screen,
   store: TaskStore,
   id: string,
   onClose?: () => void
+) {
+  const overlay = blessed.box({ top: 'center', left: 'center', width: '80%', height: '80%', border: 'line', label: ` Content ${id} — Esc to close `, keys: true });
+  const contentBox = blessed.box({ parent: overlay, top: 0, left: 0, width: '100%', height: '100%', tags: true, keys: true, scrollable: true, alwaysScroll: true, scrollbar: { ch: ' ', style: { bg: 'white' } } });
+
+  screen.append(overlay);
+  screen.render();
+
+  try {
+    const res = await store.readContent(id);
+    const body = res.content || '(no content)';
+    contentBox.setContent(body);
+  } catch (err: any) {
+    contentBox.setContent(`Error: ${err?.message ?? String(err)}`);
+  }
+
+  const close = () => {
+    try { overlay.destroy(); } catch {}
+    try { onClose && onClose(); } catch {}
+    screen.render();
+  };
+
+  const switchToTimeline = async () => {
+    try { overlay.destroy(); } catch {}
+    await showTimeline(screen, store, id, undefined, async () => {
+      await showContent(screen, store, id, onClose);
+    });
+  };
+
+  overlay.key(['escape', 'q'], close);
+  contentBox.key(['escape', 'q'], close);
+  overlay.key(['t'], () => { switchToTimeline(); });
+  contentBox.key(['t'], () => { switchToTimeline(); });
+  contentBox.focus();
+}
+
+async function showTimeline(
+  screen: blessed.Widgets.Screen,
+  store: TaskStore,
+  id: string,
+  onCloseToList?: () => void,
+  onBackToContent?: () => void
 ) {
   const overlay = blessed.box({ top: 'center', left: 'center', width: '80%', height: '80%', border: 'line', label: ` Timeline ${id} — Esc to close `, keys: true });
   const list = blessed.list({ parent: overlay, top: 0, left: 0, width: '100%', height: '100%', keys: true, vi: true, tags: true, scrollbar: { ch: ' ', style: { bg: 'white' } } });
@@ -211,15 +258,22 @@ async function showTimeline(
     }
   });
   
-  const close = () => {
+  const closeToList = () => {
     try { overlay.destroy(); } catch {}
-    try { onClose && onClose(); } catch {}
+    try { onCloseToList && onCloseToList(); } catch {}
     screen.render();
   };
-  
+  const backToContent = async () => {
+    try { overlay.destroy(); } catch {}
+    if (onBackToContent) {
+      try { await onBackToContent(); } catch {}
+    } else {
+      screen.render();
+    }
+  };
   // Register ESC handler on both overlay and list to ensure it's captured
-  overlay.key(['escape'], close);
-  list.key(['escape'], close);
+  overlay.key(['escape', 'q'], () => { onBackToContent ? backToContent() : closeToList(); });
+  list.key(['escape', 'q'], () => { onBackToContent ? backToContent() : closeToList(); });
 }
 
 async function main() {
@@ -249,7 +303,7 @@ async function main() {
     const modeHelp =
       mode === 'column'
         ? '(←/→: column, Enter: select, r: reload, q: quit)'
-        : '(↑/↓: move, ←/→: switch, Enter: timeline, Esc: back, r: reload, q: quit)';
+        : '(↑/↓: move, ←/→: switch, Enter: content, t: timeline, Esc: back, r: reload, q: quit)';
     layout.header.setContent(`{bold}Wind Task Board{/bold}  ${modeHelp}`);
   }
 
@@ -343,7 +397,7 @@ async function main() {
     moveFocus(1);
   });
 
-  // Enter to select column or open timeline
+  // Enter to select column or open content
   screen.key(['enter'], async () => {
     if (overlayActive) return; // Don't process Enter when overlay is active
     if (mode === 'column') {
@@ -357,7 +411,7 @@ async function main() {
     if (id) {
       overlayActive = true;
       const prevList = list;
-      await showTimeline(screen, store, id, () => {
+      await showContent(screen, store, id, () => {
         overlayActive = false;
         // restore focus to the originating list
         try { prevList.focus(); } catch {}
@@ -370,6 +424,24 @@ async function main() {
   screen.key(['escape'], () => {
     if (overlayActive) return; // overlay handles its own Esc
     if (mode === 'task') leaveColumn();
+  });
+
+  // 't' to show timeline overlay for selected task
+  screen.key(['t'], async () => {
+    if (overlayActive) return;
+    if (mode !== 'task') return;
+    const list = activeList();
+    const idx = typeof (list as any).selected === 'number' ? (list as any).selected : 0;
+    const items: any[] = (list as any).taskItems ?? [];
+    const id = items[idx]?.id || items[items.length - 1]?.id;
+    if (!id) return;
+    overlayActive = true;
+    const prevList = list;
+    await showTimeline(screen, store, id, () => {
+      overlayActive = false;
+      try { prevList.focus(); } catch {}
+    });
+    screen.render();
   });
 
   // Update status on up/down in task mode
