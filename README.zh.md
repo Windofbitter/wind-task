@@ -187,9 +187,8 @@ MCP 宿主集成
 
 - 启动：
 
-  - 开发（仓库内）：`WIND_PROJECT=projA npm run tui`
-  - npx（无需安装）：`WIND_PROJECT=projA npx wind-task-tui`
-  - 全局安装：`WIND_PROJECT=projA wind-task-tui`
+  - CWD 模式（推荐）：`cd /path/to/repo && npm run tui` 或 `npx wind-task-tui`
+  - 使用配置覆盖：`wind-task-tui --project projA`（读取 `~/.wind-task/config.json`）
 
 - 控制：
   - 列模式：`←/→` 切换列，`Enter` 进入列
@@ -197,7 +196,7 @@ MCP 宿主集成
   - 时间线浮层：`Esc` 关闭
   - 通用：`F2` 切换语言（English/中文），`r` 刷新，`q`/`Ctrl+C` 退出
 
-TUI 从配置的项目存储中读取（解析为 `<root>/.wind-task`），且是只读（不提供修改）。
+默认情况下，TUI 从 `<cwd>/.wind-task` 读取；使用 `--project` 时，从配置的项目存储中读取（解析为 `<root>/.wind-task`）。TUI 为只读（不提供修改）。
 
 冒烟测试（可选）
 

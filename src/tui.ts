@@ -2,7 +2,8 @@
 import blessed from 'blessed';
 import { TaskStore } from './store.js';
 import { BoardView } from './types.js';
-import { loadConfig, resolveStoreDir } from './config.js';
+import { loadProjects, resolveStoreDir } from './config.js';
+import { join } from 'path';
 
 type Lang = 'en' | 'zh';
 
@@ -57,8 +58,10 @@ function stateLabel(state: 'TODO' | 'ACTIVE' | 'DONE' | 'ARCHIVED'): string {
 type ColumnName = 'TODO' | 'ACTIVE' | 'DONE' | 'ARCHIVED';
 type Mode = 'column' | 'task';
 
-// TUI is config-driven: selects project from config.
-// Order: defaultProject -> single project -> interactive picker.
+// TUI source of truth
+// - Default: read from current working directory's `.wind-task`.
+// - Optional: accept `--project <name>` or `-p <name>` to target a configured project
+//   from ~/.wind-task/config.json and resolve its store dir.
 
 async function loadBoard(store: TaskStore): Promise<BoardView> {
   return store.boardView();
@@ -341,24 +344,35 @@ async function showTimeline(
 
 async function main() {
   const screen = makeScreen();
-  // Load config and determine project
-  const cfg = await loadConfig();
-  const projects = cfg.projects || {};
-  const names = Object.keys(projects);
-  if (names.length === 0) {
-    throw new Error(`No projects configured. Add one in ${require('os').homedir() + '/.wind-task/config.json'}`);
+
+  // Parse CLI args for optional --project/-p
+  const argv = process.argv.slice(2);
+  function getArg(nameLong: string, nameShort?: string): string | undefined {
+    for (let i = 0; i < argv.length; i++) {
+      const a = argv[i];
+      if (a === nameLong || (nameShort && a === nameShort)) {
+        return argv[i + 1];
+      }
+      if (a.startsWith(nameLong + '=')) return a.slice(nameLong.length + 1);
+    }
+    return undefined;
   }
-  let projectName: string | undefined = undefined;
-  if (cfg.defaultProject && projects[cfg.defaultProject]) {
-    projectName = cfg.defaultProject;
-  } else if (names.length === 1) {
-    projectName = names[0];
+  const projectName = getArg('--project', '-p');
+
+  let storeDir: string;
+  if (projectName) {
+    const projects = await loadProjects();
+    const configured = projects[projectName];
+    if (!configured) {
+      const known = Object.keys(projects);
+      const hint = known.length ? `Known projects: ${known.join(', ')}` : 'No projects configured';
+      throw new Error(`Unknown project: ${projectName}. ${hint}`);
+    }
+    storeDir = resolveStoreDir(configured);
   } else {
-    projectName = await pickProject(screen, names);
-    if (!projectName) throw new Error('No project selected');
+    storeDir = join(process.cwd(), '.wind-task');
   }
-  const configured = projects[projectName];
-  const storeDir = resolveStoreDir(configured);
+
   const store = new TaskStore({ baseDir: storeDir });
   await store.init();
   const layout = makeLayout(screen);
@@ -560,27 +574,6 @@ async function main() {
     updateHeader();
     updateStatusFrom(activeList());
     screen.render();
-  });
-}
-
-async function pickProject(screen: blessed.Widgets.Screen, names: string[]): Promise<string> {
-  return new Promise<string>((resolve) => {
-    const overlay = blessed.box({ top: 'center', left: 'center', width: '50%', height: '50%', border: 'line', label: ' Select Project — Enter ', keys: true });
-    const list = blessed.list({ parent: overlay, top: 0, left: 0, width: '100%', height: '100%', keys: true, vi: true, tags: false, items: names, scrollbar: { ch: ' ', style: { bg: 'white' } } });
-    screen.append(overlay);
-    list.focus();
-    screen.render();
-    const done = (name?: string) => {
-      try { overlay.destroy(); } catch {}
-      screen.render();
-      resolve(name || '');
-    };
-    list.key(['enter'], () => {
-      const idx = typeof (list as any).selected === 'number' ? (list as any).selected : 0;
-      const picked = names[Math.max(0, Math.min(idx, names.length - 1))];
-      done(picked);
-    });
-    list.key(['escape', 'q', 'C-c'], () => done(''));
   });
 }
 

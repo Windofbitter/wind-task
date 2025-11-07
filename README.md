@@ -182,9 +182,8 @@ Terminal TUI (developer visualization)
 
 - Start the TUI:
 
-  - Dev (in repo): `WIND_PROJECT=projA npm run tui`
-  - npx (no install): `WIND_PROJECT=projA npx wind-task-tui`
-  - Global install: `WIND_PROJECT=projA wind-task-tui`
+  - CWD mode (recommended): `cd /path/to/repo && npm run tui` or `npx wind-task-tui`
+  - Config override: `wind-task-tui --project projA` (uses `~/.wind-task/config.json`)
 
 - Controls:
   - Column mode: `←/→` switch columns, `Enter` enters column
@@ -192,7 +191,7 @@ Terminal TUI (developer visualization)
   - Timeline overlay: `Esc` closes overlay
   - Common: `F2` toggle language (English/中文), `r` reload, `q`/`Ctrl+C` quit
 
-The TUI reads from the configured project’s storage (resolved as `<root>/.wind-task`) and is read-only (no mutations).
+By default, the TUI reads from `<cwd>/.wind-task`. With `--project`, it reads the configured project’s storage (resolved as `<root>/.wind-task`). It is read-only (no mutations).
 
 Smoke Test (optional)
 
