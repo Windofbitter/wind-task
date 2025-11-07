@@ -2,7 +2,7 @@ MCP Task Server
 
 Minimal MCP server for LLM agents to manage simple tasks backed by files. Lifecycle is TODO → ACTIVE → DONE, with ARCHIVED as a lock (separate board column). Append-only event logs per task provide full history and context.
 
-![Wind Task Board](task_board.png)
+![Wind Task Board](docs/assets/task_board.png)
 
 Features
 
