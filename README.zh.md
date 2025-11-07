@@ -198,10 +198,9 @@ MCP 宿主集成
 
 默认情况下，TUI 从 `<cwd>/.wind-task` 读取；使用 `--project` 时，从配置的项目存储中读取（解析为 `<root>/.wind-task`）。TUI 为只读（不提供修改）。
 
-冒烟测试（可选）
+冒烟测试（开发者用途）
 
-- 运行一个小客户端，创建任务、追加日志、变更状态并读取时间线（请设置已配置的 `WIND_PROJECT`）：
-  - `WIND_PROJECT=projA timeout 5 node scripts/mcp-smoke.mjs`
+- 仓库中有一个辅助脚本 `scripts/mcp-smoke.mjs`，主要用于开发调试，可能依赖环境变量。推荐用户通过 MCP 宿主对正在运行的服务器调用工具，而非直接运行该脚本。
 
 备注
 

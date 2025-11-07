@@ -193,10 +193,9 @@ Terminal TUI (developer visualization)
 
 By default, the TUI reads from `<cwd>/.wind-task`. With `--project`, it reads the configured project’s storage (resolved as `<root>/.wind-task`). It is read-only (no mutations).
 
-Smoke Test (optional)
+Smoke Test (developer-only)
 
-- Run a small client that creates a task, appends a log, moves state, and reads the timeline (set `WIND_PROJECT` to a configured project):
-  - `WIND_PROJECT=projA timeout 5 node scripts/mcp-smoke.mjs`
+- A development helper script exists at `scripts/mcp-smoke.mjs`. It is not part of the recommended user flow and may rely on environment variables. Prefer using an MCP host to call tools against the running server.
 
 Notes
 
@@ -208,7 +207,7 @@ Notes for CLI use
 
 - Use absolute paths for `args`.
 - The server ignores cwd; it resolves project storage via `~/.wind-task/config.json`.
-- Set `WIND_PROJECT=projA` when using sample scripts (see below).
+ 
 Projects (multi-repo)
 
 - Configure projects in `~/.wind-task/config.json`:
