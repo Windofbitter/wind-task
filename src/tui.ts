@@ -72,8 +72,13 @@ async function renderBoard(layout: ReturnType<typeof makeLayout>, store: TaskSto
   layout.status.setContent(`Loaded at ${new Date().toLocaleTimeString()}`);
 }
 
-async function showTimeline(screen: blessed.Widgets.Screen, store: TaskStore, id: string) {
-  const overlay = blessed.box({ top: 'center', left: 'center', width: '80%', height: '80%', border: 'line', label: ` Timeline ${id} `, keys: true });
+async function showTimeline(
+  screen: blessed.Widgets.Screen,
+  store: TaskStore,
+  id: string,
+  onClose?: () => void
+) {
+  const overlay = blessed.box({ top: 'center', left: 'center', width: '80%', height: '80%', border: 'line', label: ` Timeline ${id} — Esc to close `, keys: true });
   const list = blessed.list({ parent: overlay, top: 0, left: 0, width: '100%', height: '100%', keys: true, vi: true, tags: true, scrollbar: { ch: ' ', style: { bg: 'white' } } });
   screen.append(overlay);
   screen.render();
@@ -88,10 +93,12 @@ async function showTimeline(screen: blessed.Widgets.Screen, store: TaskStore, id
     list.setItems([`Error: ${err?.message ?? String(err)}`]);
   }
   list.focus();
-  overlay.key(['escape', 'q'], () => {
-    overlay.destroy();
+  const close = () => {
+    try { overlay.destroy(); } catch {}
+    try { onClose && onClose(); } catch {}
     screen.render();
-  });
+  };
+  overlay.key(['escape'], close);
 }
 
 async function main() {
@@ -105,6 +112,7 @@ async function main() {
   // Navigation state
   let mode: Mode = 'column';
   let activeColIdx = 0;
+  let overlayActive = false;
   const selectedIdxByCol: Record<ColumnName, number> = {
     TODO: 0,
     ACTIVE: 0,
@@ -218,12 +226,21 @@ async function main() {
     const idx = typeof list.selected === 'number' ? list.selected : 0;
     const items: any[] = (list as any).taskItems ?? [];
     const id = items[idx]?.id || items[items.length - 1]?.id;
-    if (id) await showTimeline(screen, store, id);
+    if (id) {
+      overlayActive = true;
+      const prevList = list;
+      await showTimeline(screen, store, id, () => {
+        overlayActive = false;
+        // restore focus to the originating list
+        try { prevList.focus(); } catch {}
+      });
+    }
     screen.render();
   });
 
   // Esc to back out of task mode
   screen.key(['escape'], () => {
+    if (overlayActive) return; // overlay handles its own Esc
     if (mode === 'task') leaveColumn();
   });
 

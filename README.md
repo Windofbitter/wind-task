@@ -65,6 +65,7 @@ Terminal TUI (developer visualization)
 - Controls:
   - Column mode: `←/→` switch columns, `Enter` enters column
   - Task mode: `↑/↓` move selection, `←/→` switch columns (preserve row), `Enter` opens timeline, `Esc` back
+  - Timeline overlay: `Esc` closes overlay
   - Common: `r` reload, `q`/`Ctrl+C` quit
 
 The TUI reads from `.wind-task/` and is read-only (no mutations).
