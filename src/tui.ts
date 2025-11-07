@@ -98,7 +98,9 @@ async function showTimeline(
     try { onClose && onClose(); } catch {}
     screen.render();
   };
+  // Register ESC handler on both overlay and list to ensure it's captured
   overlay.key(['escape'], close);
+  list.key(['escape'], close);
 }
 
 async function main() {
