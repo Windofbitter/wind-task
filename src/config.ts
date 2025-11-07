@@ -4,6 +4,7 @@ import { join, resolve, isAbsolute, dirname, basename } from 'path';
 
 export interface ProjectsConfig {
   projects?: Record<string, string>;
+  defaultProject?: string;
 }
 
 const CONFIG_PATH = join(homedir(), '.wind-task', 'config.json');
@@ -24,6 +25,16 @@ export async function loadProjects(): Promise<Record<string, string>> {
     return out;
   } catch (err: any) {
     if (err?.code === 'ENOENT') return {};
+    throw err;
+  }
+}
+
+export async function loadConfig(): Promise<ProjectsConfig> {
+  try {
+    const raw = await fs.readFile(CONFIG_PATH, 'utf8');
+    return JSON.parse(raw) as ProjectsConfig;
+  } catch (err: any) {
+    if (err?.code === 'ENOENT') return { projects: {} };
     throw err;
   }
 }
@@ -59,7 +70,15 @@ export async function saveProjects(projects: Record<string, string>): Promise<vo
     if (!nv) continue;
     normalized[k] = nv;
   }
-  const body = JSON.stringify({ projects: normalized }, null, 2) + '\n';
+  // Preserve defaultProject if present
+  let existing: ProjectsConfig = {};
+  try {
+    const raw = await fs.readFile(CONFIG_PATH, 'utf8');
+    existing = JSON.parse(raw);
+  } catch {}
+  const out: ProjectsConfig = { projects: normalized };
+  if (existing.defaultProject) out.defaultProject = existing.defaultProject;
+  const body = JSON.stringify(out, null, 2) + '\n';
   const tmp = CONFIG_PATH + `.tmp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   await fs.writeFile(tmp, body, 'utf8');
   await fs.rename(tmp, CONFIG_PATH);

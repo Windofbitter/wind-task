@@ -28,8 +28,8 @@ MCP 任务服务器
 - 安装：`npm install`
 - 启动服务器（stdio）：`npm run dev`
 - 构建并运行：`npm run build && npm start`
-- 启动 TUI（只读看板和时间线）：`WIND_PROJECT=projA npm run tui`
-  - 或通过 npx 运行：`WIND_PROJECT=projA npx wind-task-tui`
+- 启动 TUI（只读看板和时间线）：`npm run tui`
+  - 或通过 npx 运行：`npx wind-task-tui`
   - 服务器通过 npx：`npx wind-task`
 
 配置准备
@@ -215,4 +215,3 @@ CLI 使用说明
 
 - `args` 建议使用绝对路径。
 - 服务器忽略 cwd；它通过 `~/.wind-task/config.json` 解析项目存储位置。
-- 使用 TUI 与样例脚本时请设置 `WIND_PROJECT=projA`（见上文冒烟测试）。

@@ -2,7 +2,7 @@
 import blessed from 'blessed';
 import { TaskStore } from './store.js';
 import { BoardView } from './types.js';
-import { loadProjects, resolveStoreDir } from './config.js';
+import { loadConfig, resolveStoreDir } from './config.js';
 
 type Lang = 'en' | 'zh';
 
@@ -57,8 +57,8 @@ function stateLabel(state: 'TODO' | 'ACTIVE' | 'DONE' | 'ARCHIVED'): string {
 type ColumnName = 'TODO' | 'ACTIVE' | 'DONE' | 'ARCHIVED';
 type Mode = 'column' | 'task';
 
-// TUI is config-driven: requires a project name via env
-// WIND_PROJECT (preferred) or WIND_TASK_PROJECT (legacy).
+// TUI is config-driven: selects project from config.
+// Order: defaultProject -> single project -> interactive picker.
 
 async function loadBoard(store: TaskStore): Promise<BoardView> {
   return store.boardView();
@@ -340,22 +340,27 @@ async function showTimeline(
 }
 
 async function main() {
-  const projectName = process.env.WIND_PROJECT || process.env.WIND_TASK_PROJECT;
-  if (!projectName) {
-    throw new Error('Missing WIND_PROJECT. Set WIND_PROJECT to a configured project name.');
+  const screen = makeScreen();
+  // Load config and determine project
+  const cfg = await loadConfig();
+  const projects = cfg.projects || {};
+  const names = Object.keys(projects);
+  if (names.length === 0) {
+    throw new Error(`No projects configured. Add one in ${require('os').homedir() + '/.wind-task/config.json'}`);
   }
-  const projects = await loadProjects();
+  let projectName: string | undefined = undefined;
+  if (cfg.defaultProject && projects[cfg.defaultProject]) {
+    projectName = cfg.defaultProject;
+  } else if (names.length === 1) {
+    projectName = names[0];
+  } else {
+    projectName = await pickProject(screen, names);
+    if (!projectName) throw new Error('No project selected');
+  }
   const configured = projects[projectName];
-  if (!configured) {
-    const known = Object.keys(projects);
-    const hint = known.length ? `Known projects: ${known.join(', ')}` : 'No projects configured';
-    throw new Error(`Unknown project: ${projectName}. ${hint}`);
-  }
   const storeDir = resolveStoreDir(configured);
   const store = new TaskStore({ baseDir: storeDir });
   await store.init();
-
-  const screen = makeScreen();
   const layout = makeLayout(screen);
   await renderBoard(layout, store);
 
@@ -555,6 +560,27 @@ async function main() {
     updateHeader();
     updateStatusFrom(activeList());
     screen.render();
+  });
+}
+
+async function pickProject(screen: blessed.Widgets.Screen, names: string[]): Promise<string> {
+  return new Promise<string>((resolve) => {
+    const overlay = blessed.box({ top: 'center', left: 'center', width: '50%', height: '50%', border: 'line', label: ' Select Project — Enter ', keys: true });
+    const list = blessed.list({ parent: overlay, top: 0, left: 0, width: '100%', height: '100%', keys: true, vi: true, tags: false, items: names, scrollbar: { ch: ' ', style: { bg: 'white' } } });
+    screen.append(overlay);
+    list.focus();
+    screen.render();
+    const done = (name?: string) => {
+      try { overlay.destroy(); } catch {}
+      screen.render();
+      resolve(name || '');
+    };
+    list.key(['enter'], () => {
+      const idx = typeof (list as any).selected === 'number' ? (list as any).selected : 0;
+      const picked = names[Math.max(0, Math.min(idx, names.length - 1))];
+      done(picked);
+    });
+    list.key(['escape', 'q', 'C-c'], () => done(''));
   });
 }
 
