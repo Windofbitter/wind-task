@@ -2,6 +2,8 @@ MCP Task Server
 
 Minimal MCP server for LLM agents to manage simple tasks backed by files. Lifecycle is TODO → ACTIVE → DONE, with ARCHIVED as a lock (separate board column). Append-only event logs per task provide full history and context.
 
+![Wind Task Board](task_board.png)
+
 Features
 
 - States: `TODO`, `ACTIVE`, `DONE`; `ARCHIVED` via `archived_at` (blocks mutations)
@@ -17,6 +19,14 @@ Project Layout
 - `src/store.ts` — file-backed store and operations
 - `src/index.ts` — MCP server (stdio transport)
 - `tasks/` — data directory (created on first run)
+
+Quick Start
+
+- Prereqs: Node 18+ (tested with Node 22)
+- Install: `npm install`
+- Start server (stdio): `npm run dev`
+- Build and run: `npm run build && npm start`
+- TUI (read‑only board and timeline): `npm run tui`
 
 MCP Surface
 
@@ -35,19 +45,43 @@ MCP Surface
   - `archive(id, reason?, expected_last_seq, actor)`
   - `unarchive(id, expected_last_seq, actor)`
 
-Run (development)
+Using With LLM Hosts
 
-1) Install deps (requires network):
+- Claude Desktop
+  - Edit config file (platform‑specific path):
+    - macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
+    - Linux: `~/.config/Claude/claude_desktop_config.json`
+    - Windows: `%APPDATA%\\Claude\\claude_desktop_config.json`
+  - Add under `mcpServers`:
+    {
+      "mcpServers": {
+        "mcp-task-server": {
+          "command": "node",
+          "args": ["dist/index.js"],
+          "cwd": "/absolute/path/to/this/repo",
+          "env": {},
+          "transport": "stdio"
+        }
+      }
+    }
+  - Restart Claude. Ask it to list MCP resources; you should see `tasks://board`.
 
-   npm install
+- Claude for VS Code (Claude Code)
+  - In Settings (JSON) add:
+    "anthropic.mcpServers": {
+      "mcp-task-server": {
+        "command": "node",
+        "args": ["dist/index.js"],
+        "cwd": "/absolute/path/to/this/repo",
+        "env": {},
+        "transport": "stdio"
+      }
+    }
 
-2) Start with tsx (stdio transport):
-
-   npm run dev
-
-Or build and run:
-
-   npm run build && npm start
+- Notes
+  - Reads are exposed as resources (use `resources/read`).
+  - Mutations are tools (use `tools/call`).
+  - The server reads `.wind-task/` relative to its `cwd`. Keep `cwd` set to the repo root.
 
 Data Directory
 
@@ -69,6 +103,11 @@ Terminal TUI (developer visualization)
   - Common: `r` reload, `q`/`Ctrl+C` quit
 
 The TUI reads from `.wind-task/` and is read-only (no mutations).
+
+Smoke Test (optional)
+
+- Run a small client that creates a task, appends a log, moves state, and reads the timeline:
+  - `timeout 5 node scripts/mcp-smoke.mjs`
 
 Notes
 
