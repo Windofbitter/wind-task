@@ -20,7 +20,7 @@ MCP 任务服务器
 - `src/id.ts` — 极简 ULID 生成器（时间可排序 ID）
 - `src/store.ts` — 基于文件的存储与操作
 - `src/index.ts` — MCP 服务器（stdio 传输）
-- `.wind-task/` — 数据目录（首次运行时创建）
+- 多项目路径通过 `~/.wind-task/config.json` 配置
 
 快速开始
 
@@ -30,24 +30,39 @@ MCP 任务服务器
 - 构建并运行：`npm run build && npm start`
 - 启动 TUI（只读看板和时间线）：`npm run tui`
 
+项目（多项目/多仓库）
+
+- 在 `~/.wind-task/config.json` 配置项目：
+
+  {
+    "projects": {
+      "projA": "/abs/path/to/projA/.wind-task",
+      "projB": "/abs/path/to/projB/.wind-task"
+    }
+  }
+
+- 所有工具调用必须传入 `project` 字段。
+- 所有资源读取必须在 URI 中带上 `?project=NAME`（例如 `tasks://board?project=projA`）。
+- 不存在任何默认项目；缺失或未知项目会报错，并提示可用项目键。
+
 MCP 接口
 
 - 资源（Resources）
-  - `tasks://index` — 任务简表（JSON）
-  - `tasks://board` — 看板列：`TODO`、`ACTIVE`、`DONE`、`ARCHIVED`（JSON）
-  - `tasks://task/{id}` — 完整 `task.json`（JSON）
-  - `tasks://timeline/{id}` — `events.jsonl` 渲染后的 JSON 数组（JSON）
-  - `tasks://content/{id}` — 任务长文本内容（text/markdown）
+  - `tasks://index?project={project}` — 任务简表（JSON）
+  - `tasks://board?project={project}` — 看板列：`TODO`、`ACTIVE`、`DONE`、`ARCHIVED`（JSON）
+  - `tasks://task/{id}?project={project}` — 完整 `task.json`（JSON）
+  - `tasks://timeline/{id}?project={project}` — `events.jsonl` 渲染后的 JSON 数组（JSON）
+  - `tasks://content/{id}?project={project}` — 任务长文本内容（text/markdown）
 
 - 工具（Tools）
-  - `create_task(title, summary?, actor)`
-  - `retitle(id, title, expected_last_seq, actor)`
-  - `set_state(id, state, expected_last_seq, actor)`
-  - `append_log(id, message, expected_last_seq, actor)`
-  - `set_summary(id, summary, expected_last_seq, actor)`
-  - `set_content(id, content, expected_last_seq, actor, format?)`
-  - `archive(id, reason?, expected_last_seq, actor)`
-  - `unarchive(id, expected_last_seq, actor)`
+  - `create_task(project, title, summary?, actor)`
+  - `retitle(project, id, title, expected_last_seq, actor)`
+  - `set_state(project, id, state, expected_last_seq, actor)`
+  - `append_log(project, id, message, expected_last_seq, actor)`
+  - `set_summary(project, id, summary, expected_last_seq, actor)`
+  - `set_content(project, id, content, expected_last_seq, actor, format?)`
+  - `archive(project, id, reason?, expected_last_seq, actor)`
+  - `unarchive(project, id, expected_last_seq, actor)`
 
 与 LLM 宿主配合使用
 
@@ -83,16 +98,16 @@ MCP 接口
     }
 
 - 说明
-  - 读取能力以资源形式暴露（使用 `resources/read`）。
-  - 修改能力以工具形式暴露（使用 `tools/call`）。
-  - 服务器从其 `cwd` 下的 `.wind-task/` 读取数据；保持 `cwd` 指向仓库根目录。
+  - 读取能力以资源形式暴露（使用 `resources/read`），必须在 URI 中附带 `?project=NAME`。
+  - 修改能力以工具形式暴露（使用 `tools/call`），必须在参数中传入 `project`。
+  - 项目与路径的映射在 `~/.wind-task/config.json` 中配置（建议使用绝对路径，支持 `~/`）。
 
 数据目录
 
-- 默认基目录：`.wind-task/`
-- 单任务目录结构：
-  - `.wind-task/<id>/task.json`
-  - `.wind-task/<id>/events.jsonl`
+- 每个项目的基目录由配置文件决定（无默认值）。
+- 单任务目录结构（以配置的项目根为基准）：
+  - `<baseDir>/<id>/task.json`
+  - `<baseDir>/<id>/events.jsonl`
 
 终端 TUI（开发者可视化）
 
