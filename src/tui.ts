@@ -72,6 +72,108 @@ async function renderBoard(layout: ReturnType<typeof makeLayout>, store: TaskSto
   layout.status.setContent(`Loaded at ${new Date().toLocaleTimeString()}`);
 }
 
+function formatEventTitle(event: any): string {
+  switch (event.type) {
+    case 'created':
+      return `Task created: "${event.payload.title}"`;
+    case 'state_changed':
+      return `Moved to ${event.payload.to}`;
+    case 'retitled':
+      return 'Title changed';
+    case 'summary_set':
+      return 'Summary updated';
+    case 'log_appended': {
+      const msg = event.payload.message;
+      return msg.length > 50 ? msg.substring(0, 47) + '...' : msg;
+    }
+    case 'archived':
+      return 'Task archived';
+    case 'unarchived':
+      return 'Task unarchived';
+    default:
+      return event.type;
+  }
+}
+
+function formatEventDetails(event: any): string[] {
+  const lines: string[] = [];
+  lines.push(`{bold}Event Type:{/bold} ${event.type}`);
+  lines.push(`{bold}Sequence:{/bold} ${event.seq}`);
+  lines.push(`{bold}Timestamp:{/bold} ${event.at}`);
+  lines.push(`{bold}Actor:{/bold} ${event.actor}`);
+  lines.push('');
+  lines.push('{bold}Details:{/bold}');
+  
+  switch (event.type) {
+    case 'created':
+      lines.push(`Title: ${event.payload.title}`);
+      if (event.payload.summary) {
+        lines.push(`Summary: ${event.payload.summary}`);
+      }
+      break;
+    case 'state_changed':
+      lines.push(`${event.payload.from} → ${event.payload.to}`);
+      break;
+    case 'retitled':
+      lines.push(`New title: ${event.payload.title}`);
+      break;
+    case 'summary_set':
+      lines.push(event.payload.summary);
+      break;
+    case 'log_appended':
+      lines.push(event.payload.message);
+      break;
+    case 'archived':
+      if (event.payload.reason) {
+        lines.push(`Reason: ${event.payload.reason}`);
+      }
+      break;
+    case 'unarchived':
+      lines.push('Task was unarchived');
+      break;
+  }
+  
+  return lines;
+}
+
+function showEventDetails(
+  screen: blessed.Widgets.Screen,
+  event: any,
+  onClose?: () => void
+) {
+  const detailsBox = blessed.box({
+    top: 'center',
+    left: 'center',
+    width: '60%',
+    height: '60%',
+    border: 'line',
+    label: ' Event Details — Esc to close ',
+    keys: true,
+    tags: true,
+    scrollable: true,
+    alwaysScroll: true,
+    scrollbar: {
+      ch: ' ',
+      style: { bg: 'white' }
+    }
+  });
+  
+  const content = formatEventDetails(event).join('\n');
+  detailsBox.setContent(content);
+  
+  screen.append(detailsBox);
+  detailsBox.focus();
+  screen.render();
+  
+  const close = () => {
+    try { detailsBox.destroy(); } catch {}
+    try { onClose && onClose(); } catch {}
+    screen.render();
+  };
+  
+  detailsBox.key(['escape', 'q'], close);
+}
+
 async function showTimeline(
   screen: blessed.Widgets.Screen,
   store: TaskStore,
@@ -82,22 +184,39 @@ async function showTimeline(
   const list = blessed.list({ parent: overlay, top: 0, left: 0, width: '100%', height: '100%', keys: true, vi: true, tags: true, scrollbar: { ch: ' ', style: { bg: 'white' } } });
   screen.append(overlay);
   screen.render();
+  
+  let events: any[] = [];
+  
   try {
     const view = await store.timelineView(id, { limit: 100 });
-    const lines = view.events.map((e) => {
-      const payload = e.type === 'log_appended' ? e.payload.message : JSON.stringify(e.payload);
-      return `{bold}${e.seq}{/bold} ${e.type} {gray-fg}${e.at}{/gray-fg}\n{blue-fg}${e.actor}{/blue-fg}: ${payload}`;
+    events = view.events;
+    const lines = events.map((e) => {
+      const title = formatEventTitle(e);
+      return `{bold}${e.seq}{/bold} {gray-fg}${e.type}{/gray-fg} {blue-fg}${e.actor}{/blue-fg}\n    ${title}`;
     });
     list.setItems(lines);
   } catch (err: any) {
     list.setItems([`Error: ${err?.message ?? String(err)}`]);
   }
+  
   list.focus();
+  
+  // Handle Enter key to show details
+  list.key(['enter'], () => {
+    const idx = typeof (list as any).selected === 'number' ? (list as any).selected : 0;
+    if (events[idx]) {
+      showEventDetails(screen, events[idx], () => {
+        list.focus();
+      });
+    }
+  });
+  
   const close = () => {
     try { overlay.destroy(); } catch {}
     try { onClose && onClose(); } catch {}
     screen.render();
   };
+  
   // Register ESC handler on both overlay and list to ensure it's captured
   overlay.key(['escape'], close);
   list.key(['escape'], close);
