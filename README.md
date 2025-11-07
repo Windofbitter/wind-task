@@ -63,10 +63,9 @@ Terminal TUI (developer visualization)
   npm run tui
 
 - Controls:
-  - `Tab` — focus next column
-  - `Enter` — open timeline for selected task (last 100 events)
-  - `r` — reload board
-  - `q` or `Ctrl+C` — quit
+  - Column mode: `←/→` switch columns, `Enter` enters column
+  - Task mode: `↑/↓` move selection, `←/→` switch columns (preserve row), `Enter` opens timeline, `Esc` back
+  - Common: `r` reload, `q`/`Ctrl+C` quit
 
 The TUI reads from `.wind-task/` and is read-only (no mutations).
 
