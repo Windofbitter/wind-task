@@ -8,10 +8,34 @@ import {
   CallToolRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 import { TaskStore, ConflictError, ArchivedError, NotFoundError } from './store.js';
+import { loadProjects, isValidProjectName, configPath } from './config.js';
 
 async function main() {
-  const store = new TaskStore({ baseDir: '.wind-task' });
-  await store.init();
+  // Load project mapping from user config and cache TaskStores per project
+  const projects = await loadProjects();
+  const stores = new Map<string, TaskStore>();
+
+  async function storeFor(project: string | undefined): Promise<TaskStore> {
+    if (!project) {
+      throw new Error(`Missing required 'project'. Define mappings in ${configPath()} and include project on each request.`);
+    }
+    if (!isValidProjectName(project)) {
+      throw new Error(`Invalid project name: ${project}`);
+    }
+    const baseDir = projects[project];
+    if (!baseDir) {
+      const known = Object.keys(projects);
+      const hint = known.length ? `Known projects: ${known.join(', ')}` : `No projects configured at ${configPath()}`;
+      throw new Error(`Unknown project: ${project}. ${hint}`);
+    }
+    let s = stores.get(project);
+    if (!s) {
+      s = new TaskStore({ baseDir });
+      await s.init();
+      stores.set(project, s);
+    }
+    return s;
+  }
 
   const server = new Server(
     { name: 'mcp-task-server', version: '0.2.0' },
@@ -30,13 +54,13 @@ async function main() {
         {
           uri: 'tasks://index',
           name: 'Task Index',
-          description: 'Compact list of tasks with state and archive flag',
+          description: 'Compact list of tasks (use ?project=NAME when reading)',
           mimeType: 'application/json',
         },
         {
           uri: 'tasks://board',
           name: 'Task Board',
-          description: 'Kanban with TODO/ACTIVE/DONE and ARCHIVED',
+          description: 'Kanban with TODO/ACTIVE/DONE and ARCHIVED (use ?project=NAME)',
           mimeType: 'application/json',
         },
       ],
@@ -47,19 +71,19 @@ async function main() {
     return {
       resourceTemplates: [
         {
-          uriTemplate: 'tasks://task/{id}',
+          uriTemplate: 'tasks://task/{id}?project={project}',
           name: 'Task View',
           description: 'Full task JSON for a given task id',
           mimeType: 'application/json',
         },
         {
-          uriTemplate: 'tasks://timeline/{id}',
+          uriTemplate: 'tasks://timeline/{id}?project={project}',
           name: 'Task Timeline',
           description: 'Event stream for a given task id',
           mimeType: 'application/json',
         },
         {
-          uriTemplate: 'tasks://content/{id}',
+          uriTemplate: 'tasks://content/{id}?project={project}',
           name: 'Task Content',
           description: 'Long-form content for a given task id',
           mimeType: 'text/markdown',
@@ -70,12 +94,17 @@ async function main() {
 
   server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
     const uri = request.params.uri;
-    const jsonText = await renderResourceUri(store, uri);
+    const qIndex = uri.indexOf('?');
+    const cleanUri = qIndex >= 0 ? uri.substring(0, qIndex) : uri;
+    const query = qIndex >= 0 ? new URLSearchParams(uri.substring(qIndex + 1)) : undefined;
+    const project = query?.get('project') ?? undefined;
+    const s = await storeFor(project);
+    const jsonText = await renderResourceUri(s, cleanUri);
     return {
       contents: [
         {
           uri,
-          mimeType: uri.startsWith('tasks://content/') ? 'text/markdown' : 'application/json',
+          mimeType: cleanUri.startsWith('tasks://content/') ? 'text/markdown' : 'application/json',
           text: jsonText,
         },
       ],
@@ -92,11 +121,12 @@ async function main() {
           inputSchema: {
             type: 'object',
             properties: {
+              project: { type: 'string', description: 'Project key name' },
               title: { type: 'string' },
               summary: { type: 'string' },
               actor: { type: 'string', description: 'actor id, e.g., agent:llm' },
             },
-            required: ['title', 'actor'],
+            required: ['project', 'title', 'actor'],
             additionalProperties: false,
           },
         },
@@ -106,12 +136,13 @@ async function main() {
           inputSchema: {
             type: 'object',
             properties: {
+              project: { type: 'string' },
               id: { type: 'string' },
               title: { type: 'string' },
               expected_last_seq: { type: 'number' },
               actor: { type: 'string' },
             },
-            required: ['id', 'title', 'expected_last_seq', 'actor'],
+            required: ['project', 'id', 'title', 'expected_last_seq', 'actor'],
             additionalProperties: false,
           },
         },
@@ -121,12 +152,13 @@ async function main() {
           inputSchema: {
             type: 'object',
             properties: {
+              project: { type: 'string' },
               id: { type: 'string' },
               state: { type: 'string' },
               expected_last_seq: { type: 'number' },
               actor: { type: 'string' },
             },
-            required: ['id', 'state', 'expected_last_seq', 'actor'],
+            required: ['project', 'id', 'state', 'expected_last_seq', 'actor'],
             additionalProperties: false,
           },
         },
@@ -136,12 +168,13 @@ async function main() {
           inputSchema: {
             type: 'object',
             properties: {
+              project: { type: 'string' },
               id: { type: 'string' },
               message: { type: 'string' },
               expected_last_seq: { type: 'number' },
               actor: { type: 'string' },
             },
-            required: ['id', 'message', 'expected_last_seq', 'actor'],
+            required: ['project', 'id', 'message', 'expected_last_seq', 'actor'],
             additionalProperties: false,
           },
         },
@@ -151,12 +184,13 @@ async function main() {
           inputSchema: {
             type: 'object',
             properties: {
+              project: { type: 'string' },
               id: { type: 'string' },
               summary: { type: 'string' },
               expected_last_seq: { type: 'number' },
               actor: { type: 'string' },
             },
-            required: ['id', 'summary', 'expected_last_seq', 'actor'],
+            required: ['project', 'id', 'summary', 'expected_last_seq', 'actor'],
             additionalProperties: false,
           },
         },
@@ -166,13 +200,14 @@ async function main() {
           inputSchema: {
             type: 'object',
             properties: {
+              project: { type: 'string' },
               id: { type: 'string' },
               content: { type: 'string' },
               expected_last_seq: { type: 'number' },
               actor: { type: 'string' },
               format: { type: 'string', enum: ['markdown', 'text'] },
             },
-            required: ['id', 'content', 'expected_last_seq', 'actor'],
+            required: ['project', 'id', 'content', 'expected_last_seq', 'actor'],
             additionalProperties: false,
           },
         },
@@ -182,12 +217,13 @@ async function main() {
           inputSchema: {
             type: 'object',
             properties: {
+              project: { type: 'string' },
               id: { type: 'string' },
               reason: { type: 'string' },
               expected_last_seq: { type: 'number' },
               actor: { type: 'string' },
             },
-            required: ['id', 'expected_last_seq', 'actor'],
+            required: ['project', 'id', 'expected_last_seq', 'actor'],
             additionalProperties: false,
           },
         },
@@ -197,11 +233,12 @@ async function main() {
           inputSchema: {
             type: 'object',
             properties: {
+              project: { type: 'string' },
               id: { type: 'string' },
               expected_last_seq: { type: 'number' },
               actor: { type: 'string' },
             },
-            required: ['id', 'expected_last_seq', 'actor'],
+            required: ['project', 'id', 'expected_last_seq', 'actor'],
             additionalProperties: false,
           },
         },
@@ -215,43 +252,51 @@ async function main() {
       let task: any;
       switch (name) {
         case 'create_task': {
-          const { title, summary, actor } = args || {};
-          task = await store.createTask(String(title), summary ? String(summary) : undefined, { actor: String(actor) });
+          const { project, title, summary, actor } = args || {};
+          const s = await storeFor(project ? String(project) : undefined);
+          task = await s.createTask(String(title), summary ? String(summary) : undefined, { actor: String(actor) });
           break;
         }
         case 'retitle': {
-          const { id, title, expected_last_seq, actor } = args || {};
-          task = await store.retitle(String(id), String(title), { expected_last_seq: Number(expected_last_seq), actor: String(actor) });
+          const { project, id, title, expected_last_seq, actor } = args || {};
+          const s = await storeFor(project ? String(project) : undefined);
+          task = await s.retitle(String(id), String(title), { expected_last_seq: Number(expected_last_seq), actor: String(actor) });
           break;
         }
         case 'set_state': {
-          const { id, state, expected_last_seq, actor } = args || {};
-          task = await store.setState(String(id), String(state), { expected_last_seq: Number(expected_last_seq), actor: String(actor) });
+          const { project, id, state, expected_last_seq, actor } = args || {};
+          const s = await storeFor(project ? String(project) : undefined);
+          task = await s.setState(String(id), String(state), { expected_last_seq: Number(expected_last_seq), actor: String(actor) });
           break;
         }
         case 'append_log': {
-          const { id, message, expected_last_seq, actor } = args || {};
-          task = await store.appendLog(String(id), String(message), { expected_last_seq: Number(expected_last_seq), actor: String(actor) });
+          const { project, id, message, expected_last_seq, actor } = args || {};
+          const s = await storeFor(project ? String(project) : undefined);
+          task = await s.appendLog(String(id), String(message), { expected_last_seq: Number(expected_last_seq), actor: String(actor) });
           break;
         }
         case 'set_summary': {
-          const { id, summary, expected_last_seq, actor } = args || {};
-          task = await store.setSummary(String(id), String(summary), { expected_last_seq: Number(expected_last_seq), actor: String(actor) });
+          const { project, id, summary, expected_last_seq, actor } = args || {};
+          const s = await storeFor(project ? String(project) : undefined);
+          task = await s.setSummary(String(id), String(summary), { expected_last_seq: Number(expected_last_seq), actor: String(actor) });
           break;
         }
         case 'set_content': {
-          const { id, content, expected_last_seq, actor, format } = args || {};
-          task = await store.setContent(String(id), String(content), { expected_last_seq: Number(expected_last_seq), actor: String(actor) }, format ? String(format) as any : 'markdown');
+          const { project, id, content, expected_last_seq, actor, format } = args || {};
+          const s = await storeFor(project ? String(project) : undefined);
+          task = await s.setContent(String(id), String(content), { expected_last_seq: Number(expected_last_seq), actor: String(actor) }, format ? String(format) as any : 'markdown');
           break;
         }
         case 'archive': {
-          const { id, reason, expected_last_seq, actor } = args || {};
-          task = await store.archive(String(id), reason != null ? String(reason) : undefined, { expected_last_seq: Number(expected_last_seq), actor: String(actor) });
+          const { project, id, reason, expected_last_seq, actor } = args || {};
+          const s = await storeFor(project ? String(project) : undefined);
+          task = await s.archive(String(id), reason != null ? String(reason) : undefined, { expected_last_seq: Number(expected_last_seq), actor: String(actor) });
           break;
         }
         case 'unarchive': {
-          const { id, expected_last_seq, actor } = args || {};
-          task = await store.unarchive(String(id), { expected_last_seq: Number(expected_last_seq), actor: String(actor) });
+          const { project, id, expected_last_seq, actor } = args || {};
+          const s = await storeFor(project ? String(project) : undefined);
+          task = await s.unarchive(String(id), { expected_last_seq: Number(expected_last_seq), actor: String(actor) });
           break;
         }
         default:

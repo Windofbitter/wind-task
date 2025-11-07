@@ -20,7 +20,7 @@ MCP 任务服务器
 - `src/id.ts` — 极简 ULID 生成器（时间可排序 ID）
 - `src/store.ts` — 基于文件的存储与操作
 - `src/index.ts` — MCP 服务器（stdio 传输）
-- `.wind-task/` — 数据目录（首次运行时创建）
+- `.wind-task/` — 数据目录（按项目；见“项目”一节）
 
 快速开始
 
@@ -32,22 +32,37 @@ MCP 任务服务器
 
 MCP 接口
 
+项目（多仓库）
+
+- 在 `~/.wind-task/config.json` 配置项目映射：
+
+  {
+    "projects": {
+      "projA": "/abs/path/to/projA/.wind-task",
+      "projB": "/abs/path/to/projB/.wind-task"
+    }
+  }
+
+- 每次工具调用必须包含 `project` 字段。
+- 每次资源读取必须在 URI 上携带 `?project=NAME`（例如 `tasks://board?project=projA`）。
+- 不存在默认项目；缺失或未知项目会报错，并列出已知项目键。
+
 - 资源（Resources）
-  - `tasks://index` — 任务简表（JSON）
-  - `tasks://board` — 看板列：`TODO`、`ACTIVE`、`DONE`、`ARCHIVED`（JSON）
-  - `tasks://task/{id}` — 完整 `task.json`（JSON）
-  - `tasks://timeline/{id}` — `events.jsonl` 渲染后的 JSON 数组（JSON）
-  - `tasks://content/{id}` — 任务长文本内容（text/markdown）
+  - `tasks://index?project={project}` — 任务简表（JSON）
+  - `tasks://board?project={project}` — 看板列（JSON）
+  - `tasks://task/{id}?project={project}` — 完整 `task.json`（JSON）
+  - `tasks://timeline/{id}?project={project}` — 渲染后的时间线（JSON）
+  - `tasks://content/{id}?project={project}` — 任务长文本内容（text/markdown）
 
 - 工具（Tools）
-  - `create_task(title, summary?, actor)`
-  - `retitle(id, title, expected_last_seq, actor)`
-  - `set_state(id, state, expected_last_seq, actor)`
-  - `append_log(id, message, expected_last_seq, actor)`
-  - `set_summary(id, summary, expected_last_seq, actor)`
-  - `set_content(id, content, expected_last_seq, actor, format?)`
-  - `archive(id, reason?, expected_last_seq, actor)`
-  - `unarchive(id, expected_last_seq, actor)`
+  - `create_task(project, title, summary?, actor)`
+  - `retitle(project, id, title, expected_last_seq, actor)`
+  - `set_state(project, id, state, expected_last_seq, actor)`
+  - `append_log(project, id, message, expected_last_seq, actor)`
+  - `set_summary(project, id, summary, expected_last_seq, actor)`
+  - `set_content(project, id, content, expected_last_seq, actor, format?)`
+  - `archive(project, id, reason?, expected_last_seq, actor)`
+  - `unarchive(project, id, expected_last_seq, actor)`
 
 与 LLM 宿主配合使用
 
@@ -62,7 +77,7 @@ MCP 接口
         "mcp-task-server": {
           "command": "node",
           "args": ["dist/index.js"],
-          "cwd": "/absolute/path/to/this/repo",
+          
           "env": {},
           "transport": "stdio"
         }
@@ -76,20 +91,20 @@ MCP 接口
       "mcp-task-server": {
         "command": "node",
         "args": ["dist/index.js"],
-        "cwd": "/absolute/path/to/this/repo",
+        
         "env": {},
         "transport": "stdio"
       }
     }
 
 - 说明
-  - 读取能力以资源形式暴露（使用 `resources/read`）。
-  - 修改能力以工具形式暴露（使用 `tools/call`）。
-  - 服务器从其 `cwd` 下的 `.wind-task/` 读取数据；保持 `cwd` 指向仓库根目录。
+  - 读取能力以资源形式暴露（使用 `resources/read`），必须带上 `?project=NAME`。
+  - 修改能力以工具形式暴露（使用 `tools/call`），必须带上 `project`。
+  - 项目通过 `~/.wind-task/config.json` 映射到绝对路径。
 
 数据目录
 
-- 默认基目录：`.wind-task/`
+- 默认基目录：`.wind-task/`（按项目；由配置指向）
 - 单任务目录结构：
   - `.wind-task/<id>/task.json`
   - `.wind-task/<id>/events.jsonl`
@@ -110,8 +125,8 @@ TUI 从 `.wind-task/` 读取，且是只读（不提供修改）。
 
 冒烟测试（可选）
 
-- 运行一个小客户端，创建任务、追加日志、变更状态并读取时间线：
-  - `timeout 5 node scripts/mcp-smoke.mjs`
+- 运行一个小客户端，创建任务、追加日志、变更状态并读取时间线（请设置已配置的 `WIND_PROJECT`）：
+  - `WIND_PROJECT=projA timeout 5 node scripts/mcp-smoke.mjs`
 
 备注
 
@@ -128,7 +143,6 @@ Codex CLI（方法一：编辑 ~/.codex/config.toml）
   type = "stdio"
   command = "node"
   args = ["/absolute/path/to/this/repo/dist/index.js"]
-  cwd = "/absolute/path/to/this/repo"  # 确保 `.wind-task/` 相对仓库根目录
 
 - 验证注册与详情：
 
@@ -136,6 +150,6 @@ Codex CLI（方法一：编辑 ~/.codex/config.toml）
   codex mcp get mcp-task-server --json
 
 - 说明
-  - `args` 与 `cwd` 建议使用绝对路径。
-  - 本服务器在 `cwd` 目录下读写 `.wind-task/`，请将 `cwd` 设为仓库根目录。
-  - 若仓库位置变更，请同步更新 `~/.codex/config.toml` 中的路径。
+  - `args` 建议使用绝对路径。
+  - 服务器忽略 cwd；它通过 `~/.wind-task/config.json` 解析项目存储位置。
+  - 使用样例脚本时请设置 `WIND_PROJECT=projA`（见下文）。

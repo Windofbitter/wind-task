@@ -20,7 +20,7 @@ Project Layout
 - `src/id.ts` — minimal ULID generator (time-sortable IDs)
 - `src/store.ts` — file-backed store and operations
 - `src/index.ts` — MCP server (stdio transport)
-- `.wind-task/` — data directory (created on first run)
+- `.wind-task/` — data directory (per project; see Projects)
 
 Quick Start
 
@@ -33,21 +33,21 @@ Quick Start
 MCP Surface
 
 - Resources
-  - `tasks://index` — compact list of tasks (JSON)
-  - `tasks://board` — board with `TODO`, `ACTIVE`, `DONE`, `ARCHIVED` columns (JSON)
-  - `tasks://task/{id}` — full `task.json` (JSON)
-  - `tasks://timeline/{id}` — `events.jsonl` rendered as JSON array (JSON)
-  - `tasks://content/{id}` — long-form task content (text/markdown)
+  - `tasks://index?project={project}` — compact list of tasks (JSON)
+  - `tasks://board?project={project}` — board with `TODO`, `ACTIVE`, `DONE`, `ARCHIVED` columns (JSON)
+  - `tasks://task/{id}?project={project}` — full `task.json` (JSON)
+  - `tasks://timeline/{id}?project={project}` — `events.jsonl` rendered as JSON array (JSON)
+  - `tasks://content/{id}?project={project}` — long-form task content (text/markdown)
 
 - Tools
-  - `create_task(title, summary?, actor)`
-  - `retitle(id, title, expected_last_seq, actor)`
-  - `set_state(id, state, expected_last_seq, actor)`
-  - `append_log(id, message, expected_last_seq, actor)`
-  - `set_summary(id, summary, expected_last_seq, actor)`
-  - `set_content(id, content, expected_last_seq, actor, format?)`
-  - `archive(id, reason?, expected_last_seq, actor)`
-  - `unarchive(id, expected_last_seq, actor)`
+  - `create_task(project, title, summary?, actor)`
+  - `retitle(project, id, title, expected_last_seq, actor)`
+  - `set_state(project, id, state, expected_last_seq, actor)`
+  - `append_log(project, id, message, expected_last_seq, actor)`
+  - `set_summary(project, id, summary, expected_last_seq, actor)`
+  - `set_content(project, id, content, expected_last_seq, actor, format?)`
+  - `archive(project, id, reason?, expected_last_seq, actor)`
+  - `unarchive(project, id, expected_last_seq, actor)`
 
 Using With LLM Hosts
 
@@ -62,7 +62,6 @@ Using With LLM Hosts
         "mcp-task-server": {
           "command": "node",
           "args": ["dist/index.js"],
-          "cwd": "/absolute/path/to/this/repo",
           "env": {},
           "transport": "stdio"
         }
@@ -76,20 +75,19 @@ Using With LLM Hosts
       "mcp-task-server": {
         "command": "node",
         "args": ["dist/index.js"],
-        "cwd": "/absolute/path/to/this/repo",
         "env": {},
         "transport": "stdio"
       }
     }
 
 - Notes
-  - Reads are exposed as resources (use `resources/read`).
-  - Mutations are tools (use `tools/call`).
-  - The server reads `.wind-task/` relative to its `cwd`. Keep `cwd` set to the repo root.
+  - Reads are exposed as resources (use `resources/read`) and must include `?project=NAME`.
+  - Mutations are tools (use `tools/call`) and must include `project`.
+  - Projects are mapped to absolute paths in `~/.wind-task/config.json`.
 
 Data Directory
 
-- Default base dir: `.wind-task/`
+- Default base dir: `.wind-task/` (per project; pointed to by config)
 - Per-task folder structure:
   - `.wind-task/<id>/task.json`
   - `.wind-task/<id>/events.jsonl`
@@ -110,8 +108,8 @@ The TUI reads from `.wind-task/` and is read-only (no mutations).
 
 Smoke Test (optional)
 
-- Run a small client that creates a task, appends a log, moves state, and reads the timeline:
-  - `timeout 5 node scripts/mcp-smoke.mjs`
+- Run a small client that creates a task, appends a log, moves state, and reads the timeline (set `WIND_PROJECT` to a configured project):
+  - `WIND_PROJECT=projA timeout 5 node scripts/mcp-smoke.mjs`
 
 Notes
 
@@ -128,7 +126,6 @@ Codex CLI (Method 1: Edit ~/.codex/config.toml)
   type = "stdio"
   command = "node"
   args = ["/absolute/path/to/this/repo/dist/index.js"]
-  cwd = "/absolute/path/to/this/repo"  # ensures `.wind-task/` resolves at repo root
 
 - Verify registration and details:
 
@@ -136,6 +133,20 @@ Codex CLI (Method 1: Edit ~/.codex/config.toml)
   codex mcp get mcp-task-server --json
 
 - Notes
-  - Use absolute paths for `args` and `cwd`.
-  - This server reads and writes `.wind-task/` under `cwd`. Keep `cwd` set to the repo root.
-  - If you change repo location, update the paths in `~/.codex/config.toml`.
+  - Use absolute paths for `args`.
+  - The server ignores cwd; it resolves project storage via `~/.wind-task/config.json`.
+  - Set `WIND_PROJECT=projA` when using sample scripts (see below).
+Projects (multi-repo)
+
+- Configure projects in `~/.wind-task/config.json`:
+
+  {
+    "projects": {
+      "projA": "/abs/path/to/projA/.wind-task",
+      "projB": "/abs/path/to/projB/.wind-task"
+    }
+  }
+
+- Every tool call requires a `project` field.
+- Every resource read requires `?project=NAME` in the URI (e.g., `tasks://board?project=projA`).
+- No default project is used; missing or unknown projects return an error listing known keys.
