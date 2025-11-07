@@ -30,6 +30,28 @@ Quick Start
 - Build and run: `npm run build && npm start`
 - TUI (read‑only board and timeline): `npm run tui`
 
+Config Setup
+
+- Location: `~/.wind-task/config.json` (user-level config)
+- Minimal example:
+
+  {
+    "projects": { "projA": "/abs/path/to/projA/.wind-task" }
+  }
+
+- Rules
+  - Use absolute paths for `base_dir`.
+  - `~/` expands to your home directory; relative paths are normalized to absolute.
+  - The server creates `base_dir` if missing and stores task data under it.
+- Verify
+  - Read `config://projects` via your MCP host, or open `~/.wind-task/config.json`.
+- Common errors
+  - Missing `project` on tool calls.
+  - Missing `?project=NAME` on resource URIs.
+  - Unknown project key (ensure it exists in config).
+
+- See Projects for details.
+
 MCP Surface
 
 - Resources

@@ -30,6 +30,28 @@ MCP 任务服务器
 - 构建并运行：`npm run build && npm start`
 - 启动 TUI（只读看板和时间线）：`npm run tui`
 
+配置准备
+
+- 配置文件位置：`~/.wind-task/config.json`（用户级配置）
+- 最小示例：
+
+  {
+    "projects": { "projA": "/abs/path/to/projA/.wind-task" }
+  }
+
+- 规则
+  - `base_dir` 建议使用绝对路径。
+  - `~/` 会展开为家目录；相对路径会被规范化为绝对路径。
+  - 服务器会在目录不存在时创建 `base_dir`，并在其下存放任务数据。
+- 验证
+  - 通过 MCP 宿主读取 `config://projects`，或直接查看 `~/.wind-task/config.json`。
+- 常见错误
+  - 工具调用缺少 `project` 字段。
+  - 资源 URI 未带 `?project=NAME`。
+  - 未知的项目键（请确认已在配置中存在）。
+
+- 详见“项目（多仓库）”。
+
 MCP 接口
 
 项目（多仓库）
