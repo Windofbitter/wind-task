@@ -55,27 +55,25 @@ MCP Surface
 
 MCP Host Integrations
 
-- Claude Desktop
-  - Edit config file (platform‑specific path):
-    - macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
-    - Linux: `~/.config/Claude/claude_desktop_config.json`
-    - Windows: `%APPDATA%\\Claude\\claude_desktop_config.json`
-  - Add under `mcpServers`:
-    {
-      "mcpServers": {
-        "mcp-task-server": {
-          "command": "node",
-          "args": ["dist/index.js"],
-          "env": {},
-          "transport": "stdio"
-        }
-      }
-    }
-  - Restart Claude. Ask it to list MCP resources; you should see `tasks://board`.
+<details>
+<summary>Claude Code CLI (HTTP)</summary>
 
-- Claude for VS Code (Claude Code)
-  - In Settings (JSON) add:
-    "anthropic.mcpServers": {
+- Add an HTTP MCP server via CLI:
+  claude mcp add --transport http wind-task http://localhost:3000/mcp
+- Note: This repo’s server uses stdio by default. To use HTTP, run a Streamable HTTP wrapper around the server.
+
+</details>
+
+<details>
+<summary>Claude Desktop (settings JSON, stdio)</summary>
+
+- Edit config file (platform‑specific path):
+  - macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
+  - Linux: `~/.config/Claude/claude_desktop_config.json`
+  - Windows: `%APPDATA%\Claude\claude_desktop_config.json`
+- Add under `mcpServers`:
+  {
+    "mcpServers": {
       "mcp-task-server": {
         "command": "node",
         "args": ["dist/index.js"],
@@ -83,22 +81,69 @@ MCP Host Integrations
         "transport": "stdio"
       }
     }
+  }
 
-- Codex CLI (Edit ~/.codex/config.toml)
+</details>
 
+<details>
+<summary>Claude Code (VS Code) settings JSON (stdio)</summary>
+
+- In Settings (JSON) add:
+  "anthropic.mcpServers": {
+    "mcp-task-server": {
+      "command": "node",
+      "args": ["dist/index.js"],
+      "env": {},
+      "transport": "stdio"
+    }
+  }
+
+</details>
+
+<details>
+<summary>VS Code (Copilot MCP) CLI</summary>
+
+- Add an MCP server to your profile:
+  code --add-mcp "{\"name\":\"wind-task\",\"command\":\"node\",\"args\":[\"/absolute/path/to/this/repo/dist/index.js\"]}"
+
+</details>
+
+<details>
+<summary>Codex CLI</summary>
+
+- Edit `~/.codex/config.toml`:
   [mcp_servers.mcp-task-server]
   type = "stdio"
   command = "node"
   args = ["/absolute/path/to/this/repo/dist/index.js"]
-
-  Verify:
-
+- Verify:
   codex mcp list
   codex mcp get mcp-task-server --json
 
+</details>
+
+<details>
+<summary>Cursor (HTTP deeplink)</summary>
+
+- Add via deeplink:
+  cursor://anysphere.cursor-deeplink/mcp/install?name=wind-task&config=eyJ1cmwiOiJodHRwOi8vbG9jYWxob3N0OjMwMDAvbWNwIn0%3D
+- The `config` is base64url of `{ "url": "http://localhost:3000/mcp" }`.
+- For this repo (stdio), expose an HTTP endpoint first (Streamable HTTP).
+
+</details>
+
+<details>
+<summary>MCP Inspector (HTTP)</summary>
+
+- Inspect and test HTTP servers:
+  npx @modelcontextprotocol/inspector
+- Connect to: http://localhost:3000/mcp
+
+</details>
+
 - Notes
-  - Reads are exposed as resources (use `resources/read`) and must include `?project=NAME`.
-  - Mutations are tools (use `tools/call`) and must include `project`.
+  - Reads are resources (`resources/read`) and must include `?project=NAME`.
+  - Mutations are tools (`tools/call`) and must include `project`.
   - Projects are mapped to absolute paths in `~/.wind-task/config.json`.
 
 Data Directory

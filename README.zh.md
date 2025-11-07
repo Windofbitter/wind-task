@@ -70,27 +70,25 @@ MCP 接口
 
 MCP 宿主集成
 
-- Claude Desktop
-  - 编辑配置文件（因平台而异）：
-    - macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
-    - Linux: `~/.config/Claude/claude_desktop_config.json`
-    - Windows: `%APPDATA%\\Claude\\claude_desktop_config.json`
-  - 在 `mcpServers` 下添加：
-    {
-      "mcpServers": {
-        "mcp-task-server": {
-          "command": "node",
-          "args": ["dist/index.js"],
-          "env": {},
-          "transport": "stdio"
-        }
-      }
-    }
-  - 重启 Claude。让它列出 MCP 资源；应能看到 `tasks://board`。
+<details>
+<summary>Claude Code CLI（HTTP）</summary>
 
-- Claude for VS Code（Claude Code）
-  - 在设置（JSON）中添加：
-    "anthropic.mcpServers": {
+- 通过 CLI 添加 HTTP MCP 服务器：
+  claude mcp add --transport http wind-task http://localhost:3000/mcp
+- 说明：本仓库默认使用 stdio。如需 HTTP，请为服务器提供 Streamable HTTP 包装。
+
+</details>
+
+<details>
+<summary>Claude Desktop（settings JSON，stdio）</summary>
+
+- 编辑配置文件（因平台而异）：
+  - macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
+  - Linux: `~/.config/Claude/claude_desktop_config.json`
+  - Windows: `%APPDATA%\Claude\claude_desktop_config.json`
+- 在 `mcpServers` 下添加：
+  {
+    "mcpServers": {
       "mcp-task-server": {
         "command": "node",
         "args": ["dist/index.js"],
@@ -98,13 +96,56 @@ MCP 宿主集成
         "transport": "stdio"
       }
     }
+  }
 
-- Codex CLI（编辑 ~/.codex/config.toml）
+</details>
 
+<details>
+<summary>Claude Code（VS Code）settings JSON（stdio）</summary>
+
+- 在设置（JSON）中添加：
+  "anthropic.mcpServers": {
+    "mcp-task-server": {
+      "command": "node",
+      "args": ["dist/index.js"],
+      "env": {},
+      "transport": "stdio"
+    }
+  }
+
+</details>
+
+<details>
+<summary>VS Code（Copilot MCP）CLI</summary>
+
+- 将 MCP 服务器添加到用户配置：
+  code --add-mcp "{\"name\":\"wind-task\",\"command\":\"node\",\"args\":[\"/absolute/path/to/this/repo/dist/index.js\"]}"
+
+</details>
+
+<details>
+<summary>Codex CLI</summary>
+
+- 编辑 `~/.codex/config.toml`：
   [mcp_servers.mcp-task-server]
   type = "stdio"
   command = "node"
   args = ["/absolute/path/to/this/repo/dist/index.js"]
+- 验证：
+  codex mcp list
+  codex mcp get mcp-task-server --json
+
+</details>
+
+<details>
+<summary>Cursor（HTTP deeplink）</summary>
+
+- 通过 deeplink 添加：
+  cursor://anysphere.cursor-deeplink/mcp/install?name=wind-task&config=eyJ1cmwiOiJodHRwOi8vbG9jYWxob3N0OjMwMDAvbWNwIn0%3D
+- `config` 为 `{ "url": "http://localhost:3000/mcp" }` 的 base64url。
+- 本仓库为 stdio，如需在 Cursor 使用，请先提供 HTTP 端点（Streamable HTTP）。
+
+</details>
 
 - 说明
   - 读取能力以资源形式暴露（使用 `resources/read`），必须带上 `?project=NAME`。
