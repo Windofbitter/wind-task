@@ -56,6 +56,20 @@ Data Directory
   - `.wind-task/<id>/task.json`
   - `.wind-task/<id>/events.jsonl`
 
+Terminal TUI (developer visualization)
+
+- Start the TUI:
+
+  npm run tui
+
+- Controls:
+  - `Tab` — focus next column
+  - `Enter` — open timeline for selected task (last 100 events)
+  - `r` — reload board
+  - `q` or `Ctrl+C` — quit
+
+The TUI reads from `.wind-task/` and is read-only (no mutations).
+
 Notes
 
 - Archived tasks block all mutations except `unarchive`

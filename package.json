@@ -7,7 +7,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
-    "dev": "tsx src/index.ts"
+    "dev": "tsx src/index.ts",
+    "tui": "tsx src/tui.ts"
   },
   "bin": {
     "mcp-task-server": "dist/index.js"
@@ -16,11 +17,11 @@
     "node": ">=18"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^0.6.0"
+    "@modelcontextprotocol/sdk": "^0.6.0",
+    "blessed": "^0.1.81"
   },
   "devDependencies": {
     "tsx": "^4.19.0",
     "typescript": "^5.6.3"
   }
 }
-
