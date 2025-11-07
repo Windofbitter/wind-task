@@ -35,11 +35,9 @@ async function main() {
   console.log('tools:', tools.tools.map(t => t.name));
 
   // Create a task
-  const project = process.env.WIND_TASK_PROJECT || 'test';
-
   const createRes = await client.request({
     method: 'tools/call',
-    params: { name: 'create_task', arguments: { project, title: 'MCP Smoke Test', summary: 'created via smoke client', actor: 'agent:cli' } },
+    params: { name: 'create_task', arguments: { title: 'MCP Smoke Test', summary: 'created via smoke client', actor: 'agent:cli' } },
   }, CallToolResultSchema);
   const createText = textFromContent(createRes.content);
   const created = JSON.parse(createText);
@@ -51,7 +49,7 @@ async function main() {
   // Set content
   const contentRes = await client.request({
     method: 'tools/call',
-    params: { name: 'set_content', arguments: { project, id, content: '# Smoke Content\n\nThis is a test.', expected_last_seq: seq, actor: 'agent:cli', format: 'markdown' } },
+    params: { name: 'set_content', arguments: { id, content: '# Smoke Content\n\nThis is a test.', expected_last_seq: seq, actor: 'agent:cli', format: 'markdown' } },
   }, CallToolResultSchema);
   const contentText = textFromContent(contentRes.content);
   const contentSet = JSON.parse(contentText);
@@ -61,7 +59,7 @@ async function main() {
   // Append log
   const appendRes = await client.request({
     method: 'tools/call',
-    params: { name: 'append_log', arguments: { project, id, message: 'hello from smoke', expected_last_seq: seqContent, actor: 'agent:cli' } },
+    params: { name: 'append_log', arguments: { id, message: 'hello from smoke', expected_last_seq: seqContent, actor: 'agent:cli' } },
   }, CallToolResultSchema);
   const appendText = textFromContent(appendRes.content);
   const appended = JSON.parse(appendText);
@@ -71,7 +69,7 @@ async function main() {
   // Move to ACTIVE
   const activeRes = await client.request({
     method: 'tools/call',
-    params: { name: 'set_state', arguments: { project, id, state: 'ACTIVE', expected_last_seq: seq2, actor: 'agent:cli' } },
+    params: { name: 'set_state', arguments: { id, state: 'ACTIVE', expected_last_seq: seq2, actor: 'agent:cli' } },
   }, CallToolResultSchema);
   const activeText = textFromContent(activeRes.content);
   const active = JSON.parse(activeText);
@@ -79,14 +77,14 @@ async function main() {
   console.log('set ACTIVE seq:', seq3);
 
   // Read timeline
-  const timeline = await client.request({ method: 'resources/read', params: { uri: `tasks://timeline/${id}?project=${encodeURIComponent(project)}` } }, ReadResourceResultSchema);
+  const timeline = await client.request({ method: 'resources/read', params: { uri: `tasks://timeline/${id}` } }, ReadResourceResultSchema);
   const timelineText = textFromContent(timeline.contents);
   console.log('timeline raw length:', timelineText?.length ?? 0);
   const timelineJson = JSON.parse(timelineText);
   console.log('timeline events:', timelineJson.events.length);
 
   // Read task view
-  const taskView = await client.request({ method: 'resources/read', params: { uri: `tasks://task/${id}?project=${encodeURIComponent(project)}` } }, ReadResourceResultSchema);
+  const taskView = await client.request({ method: 'resources/read', params: { uri: `tasks://task/${id}` } }, ReadResourceResultSchema);
   const taskText = textFromContent(taskView.contents);
   const taskJson = JSON.parse(taskText);
   console.log('task state:', taskJson.state, 'last_seq:', taskJson.last_event_seq);
