@@ -1,0 +1,4 @@
+{"seq":1,"type":"created","at":"2025-11-07T01:35:39.882Z","actor":"human:dev","payload":{"title":"Setup MCP task server","summary":"Expose resources and tools."}}
+{"seq":2,"type":"state_changed","at":"2025-11-07T01:35:39.901Z","actor":"human:dev","payload":{"from":"TODO","to":"ACTIVE"}}
+{"seq":3,"type":"log_appended","at":"2025-11-07T01:35:39.911Z","actor":"human:dev","payload":{"message":"Resources: index/board/task/timeline."}}
+{"seq":4,"type":"state_changed","at":"2025-11-07T01:35:39.923Z","actor":"human:dev","payload":{"from":"ACTIVE","to":"DONE"}}

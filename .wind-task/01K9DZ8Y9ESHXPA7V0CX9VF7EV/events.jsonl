@@ -1,0 +1,2 @@
+{"seq":1,"type":"created","at":"2025-11-07T01:35:39.823Z","actor":"human:dev","payload":{"title":"Write README","summary":"Document server and TUI usage."}}
+{"seq":2,"type":"log_appended","at":"2025-11-07T01:35:39.846Z","actor":"human:dev","payload":{"message":"Initialized repository and base layout."}}

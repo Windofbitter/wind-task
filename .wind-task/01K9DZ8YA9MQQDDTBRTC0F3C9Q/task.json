@@ -1,0 +1,10 @@
+{
+  "id": "01K9DZ8YA9MQQDDTBRTC0F3C9Q",
+  "title": "Implement TUI board",
+  "state": "ACTIVE",
+  "summary": "Add blessed-based board and timeline.",
+  "created_at": "2025-11-07T01:35:39.850Z",
+  "updated_at": "2025-11-07T01:35:39.877Z",
+  "last_event_seq": 3,
+  "version": 1
+}

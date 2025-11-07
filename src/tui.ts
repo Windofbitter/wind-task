@@ -21,6 +21,7 @@ function makeScreen() {
 
 function makeLayout(screen: blessed.Widgets.Screen) {
   const header = blessed.box({
+    parent: screen,
     top: 0,
     height: 1,
     width: '100%',
@@ -29,6 +30,7 @@ function makeLayout(screen: blessed.Widgets.Screen) {
   });
 
   const status = blessed.box({
+    parent: screen,
     bottom: 0,
     height: 1,
     width: '100%',
@@ -36,27 +38,15 @@ function makeLayout(screen: blessed.Widgets.Screen) {
     content: 'Ready',
   });
 
-  const cols: Record<ColumnName, blessed.Widgets.ListElement> = {
-    TODO: blessed.list({ label: ' TODO ', border: 'line', keys: true, vi: true, tags: true }),
-    ACTIVE: blessed.list({ label: ' ACTIVE ', border: 'line', keys: true, vi: true, tags: true }),
-    DONE: blessed.list({ label: ' DONE ', border: 'line', keys: true, vi: true, tags: true }),
-    ARCHIVED: blessed.list({ label: ' ARCHIVED ', border: 'line', keys: true, vi: true, tags: true }),
-  } as any;
-
   const columnOrder: ColumnName[] = ['TODO', 'ACTIVE', 'DONE', 'ARCHIVED'];
-  const widths = ['25%', '25%', '25%', '25%'];
-  columnOrder.forEach((name, i) => {
-    const list = cols[name];
-    list.top = 1;
-    list.left = widths.slice(0, i).reduce((acc, w) => acc + w, 0 as any) as any;
-    list.width = widths[i] as any;
-    list.height = '100%-2';
-    (list as any).scrollbar = { ch: ' ', track: { bg: 'gray' }, style: { bg: 'white' } };
-    screen.append(list);
-  });
+  const lefts = ['0%', '25%', '50%', '75%'];
 
-  screen.append(header);
-  screen.append(status);
+  const cols: Record<ColumnName, blessed.Widgets.ListElement> = {
+    TODO: blessed.list({ parent: screen, label: ' TODO ', border: 'line', keys: true, vi: true, tags: true, top: 1, left: lefts[0], width: '25%', height: '100%-2', scrollbar: { ch: ' ', track: { bg: 'gray' }, style: { bg: 'white' } } }),
+    ACTIVE: blessed.list({ parent: screen, label: ' ACTIVE ', border: 'line', keys: true, vi: true, tags: true, top: 1, left: lefts[1], width: '25%', height: '100%-2', scrollbar: { ch: ' ', track: { bg: 'gray' }, style: { bg: 'white' } } }),
+    DONE: blessed.list({ parent: screen, label: ' DONE ', border: 'line', keys: true, vi: true, tags: true, top: 1, left: lefts[2], width: '25%', height: '100%-2', scrollbar: { ch: ' ', track: { bg: 'gray' }, style: { bg: 'white' } } }),
+    ARCHIVED: blessed.list({ parent: screen, label: ' ARCHIVED ', border: 'line', keys: true, vi: true, tags: true, top: 1, left: lefts[3], width: '25%', height: '100%-2', scrollbar: { ch: ' ', track: { bg: 'gray' }, style: { bg: 'white' } } }),
+  } as any;
 
   return { header, status, cols, order: columnOrder };
 }
@@ -145,4 +135,3 @@ main().catch((err) => {
   console.error(err);
   process.exit(1);
 });
-

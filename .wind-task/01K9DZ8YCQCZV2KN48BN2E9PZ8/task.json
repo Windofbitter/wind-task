@@ -1,0 +1,11 @@
+{
+  "id": "01K9DZ8YCQCZV2KN48BN2E9PZ8",
+  "title": "Archived example task",
+  "state": "TODO",
+  "summary": "Demonstrates archive column and lock.",
+  "created_at": "2025-11-07T01:35:39.927Z",
+  "updated_at": "2025-11-07T01:35:39.944Z",
+  "last_event_seq": 2,
+  "version": 1,
+  "archived_at": "2025-11-07T01:35:39.944Z"
+}

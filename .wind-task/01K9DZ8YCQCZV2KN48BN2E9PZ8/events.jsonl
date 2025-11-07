@@ -1,0 +1,2 @@
+{"seq":1,"type":"created","at":"2025-11-07T01:35:39.927Z","actor":"human:dev","payload":{"title":"Archived example task","summary":"Demonstrates archive column and lock."}}
+{"seq":2,"type":"archived","at":"2025-11-07T01:35:39.944Z","actor":"human:dev","payload":{"reason":"Obsolete example."}}
