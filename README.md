@@ -123,6 +123,26 @@ Terminal TUI (developer visualization)
 
 The TUI reads from `.wind-task/` and is read-only (no mutations).
 
+Codex CLI
+
+- Register the MCP server globally (stdio transport):
+
+  codex mcp add mcp-task-server -- node /absolute/path/to/this/repo/dist/index.js
+
+- Verify registration:
+
+  codex mcp list
+
+- Show details or remove:
+
+  codex mcp get mcp-task-server --json
+  codex mcp remove mcp-task-server
+
+- Notes
+  - Codex CLI stores config in `~/.codex/config.toml`.
+  - Use an absolute path in the `add` command to avoid `cwd` issues.
+  - This server requires a `project` for all tools and `?project=` on resources; include it in your prompts so the agent passes it.
+
 Smoke Test (optional)
 
 - Run a small client that creates a task, appends a log, moves state, and reads the timeline:

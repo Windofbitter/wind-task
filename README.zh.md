@@ -123,6 +123,26 @@ MCP 接口
 
 TUI 从 `.wind-task/` 读取，且是只读（不提供修改）。
 
+Codex CLI
+
+- 全局注册 MCP 服务器（stdio 传输）：
+
+  codex mcp add mcp-task-server -- node /absolute/path/to/this/repo/dist/index.js
+
+- 验证是否注册：
+
+  codex mcp list
+
+- 查看详情或移除：
+
+  codex mcp get mcp-task-server --json
+  codex mcp remove mcp-task-server
+
+- 说明
+  - Codex CLI 的配置位于 `~/.codex/config.toml`。
+  - 使用绝对路径以避免 `cwd` 问题。
+  - 本服务器要求所有工具都携带 `project`，资源 URI 必须包含 `?project=`；在提示中明确项目键，以便代理按要求传参。
+
 冒烟测试（可选）
 
 - 运行一个小客户端，创建任务、追加日志、变更状态并读取时间线：
