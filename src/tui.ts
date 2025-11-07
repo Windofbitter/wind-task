@@ -215,11 +215,18 @@ async function main() {
   focusColumn(0);
 
   // Column navigation on arrows
-  screen.key(['left'], () => moveFocus(-1));
-  screen.key(['right'], () => moveFocus(1));
+  screen.key(['left'], () => {
+    if (overlayActive) return; // Don't navigate when overlay is active
+    moveFocus(-1);
+  });
+  screen.key(['right'], () => {
+    if (overlayActive) return; // Don't navigate when overlay is active
+    moveFocus(1);
+  });
 
   // Enter to select column or open timeline
   screen.key(['enter'], async () => {
+    if (overlayActive) return; // Don't process Enter when overlay is active
     if (mode === 'column') {
       enterColumn();
       return;
@@ -260,6 +267,7 @@ async function main() {
   });
 
   screen.key(['r'], async () => {
+    if (overlayActive) return; // Don't reload when overlay is active
     layout.status.setContent('Reloading...');
     screen.render();
     await renderBoard(layout, store);
