@@ -32,3 +32,6 @@ pnpm-debug.log*
 
 # Ensure scripts are included
 !scripts/
+
+# npm pack artifacts
+*.tgz
