@@ -2,6 +2,56 @@ import blessed from 'blessed';
 import { TaskStore } from './store.js';
 import { BoardView } from './types.js';
 
+type Lang = 'en' | 'zh';
+
+let currentLang: Lang = 'en';
+
+const I18N = {
+  en: {
+    title: 'Wind Task Board',
+    status_ready: 'Ready',
+    help_column: '(←/→: column, Enter: select, F2: language, r: reload, q: quit)',
+    help_task: '(↑/↓: move, ←/→: switch, Enter: content, t: timeline, Esc: back, F2: language, r: reload, q: quit)',
+    col_TODO: 'TODO',
+    col_ACTIVE: 'ACTIVE',
+    col_DONE: 'DONE',
+    col_ARCHIVED: 'ARCHIVED',
+    loaded_at: (time: string) => `Loaded at ${time}`,
+    no_tasks: 'No tasks',
+    archived_suffix: 'archived',
+    updated_prefix: 'updated',
+    reloading: 'Reloading...'
+  },
+  zh: {
+    title: 'Wind 任务看板',
+    status_ready: '准备就绪',
+    help_column: '（←/→：列，Enter：选择，F2：语言，r：刷新，q：退出）',
+    help_task: '（↑/↓：移动，←/→：切换，Enter：内容，t：时间线，Esc：返回，F2：语言，r：刷新，q：退出）',
+    col_TODO: '待办',
+    col_ACTIVE: '进行中',
+    col_DONE: '已完成',
+    col_ARCHIVED: '已归档',
+    loaded_at: (time: string) => `已加载 ${time}`,
+    no_tasks: '无任务',
+    archived_suffix: '已归档',
+    updated_prefix: '更新于',
+    reloading: '重新加载中...'
+  }
+} as const;
+
+function t(key: keyof typeof I18N['en']): any {
+  return (I18N as any)[currentLang][key];
+}
+
+function stateLabel(state: 'TODO' | 'ACTIVE' | 'DONE' | 'ARCHIVED'): string {
+  switch (state) {
+    case 'TODO': return t('col_TODO');
+    case 'ACTIVE': return t('col_ACTIVE');
+    case 'DONE': return t('col_DONE');
+    case 'ARCHIVED': return t('col_ARCHIVED');
+  }
+}
+
 type ColumnName = 'TODO' | 'ACTIVE' | 'DONE' | 'ARCHIVED';
 type Mode = 'column' | 'task';
 
@@ -14,7 +64,7 @@ async function loadBoard(store: TaskStore): Promise<BoardView> {
 function makeScreen() {
   const screen = blessed.screen({
     smartCSR: true,
-    title: 'Wind Task Board',
+    title: t('title'),
   });
   screen.key(['C-c', 'q'], () => process.exit(0));
   return screen;
@@ -27,7 +77,7 @@ function makeLayout(screen: blessed.Widgets.Screen) {
     height: 1,
     width: '100%',
     tags: true,
-    content: '{bold}Wind Task Board{/bold}'
+    content: `{bold}${t('title')}{/bold}`
   });
 
   const status = blessed.box({
@@ -36,17 +86,17 @@ function makeLayout(screen: blessed.Widgets.Screen) {
     height: 1,
     width: '100%',
     tags: true,
-    content: 'Ready',
+    content: t('status_ready'),
   });
 
   const columnOrder: ColumnName[] = ['TODO', 'ACTIVE', 'DONE', 'ARCHIVED'];
   const lefts = ['0%', '25%', '50%', '75%'];
 
   const cols: Record<ColumnName, blessed.Widgets.ListElement> = {
-    TODO: blessed.list({ parent: screen, label: ' TODO ', border: 'line', keys: true, tags: true, top: 1, left: lefts[0], width: '25%', height: '100%-2', style: { selected: { inverse: true, bold: true }, item: { } }, scrollbar: { ch: ' ', track: { bg: 'gray' }, style: { bg: 'white' } } }),
-    ACTIVE: blessed.list({ parent: screen, label: ' ACTIVE ', border: 'line', keys: true, tags: true, top: 1, left: lefts[1], width: '25%', height: '100%-2', style: { selected: { inverse: true, bold: true }, item: { } }, scrollbar: { ch: ' ', track: { bg: 'gray' }, style: { bg: 'white' } } }),
-    DONE: blessed.list({ parent: screen, label: ' DONE ', border: 'line', keys: true, tags: true, top: 1, left: lefts[2], width: '25%', height: '100%-2', style: { selected: { inverse: true, bold: true }, item: { } }, scrollbar: { ch: ' ', track: { bg: 'gray' }, style: { bg: 'white' } } }),
-    ARCHIVED: blessed.list({ parent: screen, label: ' ARCHIVED ', border: 'line', keys: true, tags: true, top: 1, left: lefts[3], width: '25%', height: '100%-2', style: { selected: { inverse: true, bold: true }, item: { } }, scrollbar: { ch: ' ', track: { bg: 'gray' }, style: { bg: 'white' } } }),
+    TODO: blessed.list({ parent: screen, label: ` ${stateLabel('TODO')} `, border: 'line', keys: true, tags: true, top: 1, left: lefts[0], width: '25%', height: '100%-2', style: { selected: { inverse: true, bold: true }, item: { } }, scrollbar: { ch: ' ', track: { bg: 'gray' }, style: { bg: 'white' } } }),
+    ACTIVE: blessed.list({ parent: screen, label: ` ${stateLabel('ACTIVE')} `, border: 'line', keys: true, tags: true, top: 1, left: lefts[1], width: '25%', height: '100%-2', style: { selected: { inverse: true, bold: true }, item: { } }, scrollbar: { ch: ' ', track: { bg: 'gray' }, style: { bg: 'white' } } }),
+    DONE: blessed.list({ parent: screen, label: ` ${stateLabel('DONE')} `, border: 'line', keys: true, tags: true, top: 1, left: lefts[2], width: '25%', height: '100%-2', style: { selected: { inverse: true, bold: true }, item: { } }, scrollbar: { ch: ' ', track: { bg: 'gray' }, style: { bg: 'white' } } }),
+    ARCHIVED: blessed.list({ parent: screen, label: ` ${stateLabel('ARCHIVED')} `, border: 'line', keys: true, tags: true, top: 1, left: lefts[3], width: '25%', height: '100%-2', style: { selected: { inverse: true, bold: true }, item: { } }, scrollbar: { ch: ' ', track: { bg: 'gray' }, style: { bg: 'white' } } }),
   } as any;
 
   return { header, status, cols, order: columnOrder };
@@ -69,29 +119,37 @@ async function renderBoard(layout: ReturnType<typeof makeLayout>, store: TaskSto
     // attach task items for retrieval
     (list as any).taskItems = col.items;
   }
-  layout.status.setContent(`Loaded at ${new Date().toLocaleTimeString()}`);
+  {
+    const time = new Date().toLocaleTimeString();
+    const msgFn = t('loaded_at') as (s: string) => string;
+    layout.status.setContent(msgFn(time));
+  }
 }
 
 function formatEventTitle(event: any): string {
   switch (event.type) {
     case 'created':
-      return `Task created: "${event.payload.title}"`;
+      return currentLang === 'zh'
+        ? `创建任务：“${event.payload.title}”`
+        : `Task created: "${event.payload.title}"`;
     case 'state_changed':
-      return `Moved to ${event.payload.to}`;
+      return currentLang === 'zh'
+        ? `移至 ${stateLabel(event.payload.to)}`
+        : `Moved to ${event.payload.to}`;
     case 'retitled':
-      return 'Title changed';
+      return currentLang === 'zh' ? '标题已修改' : 'Title changed';
     case 'summary_set':
-      return 'Summary updated';
+      return currentLang === 'zh' ? '摘要已更新' : 'Summary updated';
     case 'content_set':
-      return 'Content updated';
+      return currentLang === 'zh' ? '内容已更新' : 'Content updated';
     case 'log_appended': {
       const msg = event.payload.message;
       return msg.length > 50 ? msg.substring(0, 47) + '...' : msg;
     }
     case 'archived':
-      return 'Task archived';
+      return currentLang === 'zh' ? '任务已归档' : 'Task archived';
     case 'unarchived':
-      return 'Task unarchived';
+      return currentLang === 'zh' ? '任务已取消归档' : 'Task unarchived';
     default:
       return event.type;
   }
@@ -99,43 +157,43 @@ function formatEventTitle(event: any): string {
 
 function formatEventDetails(event: any): string[] {
   const lines: string[] = [];
-  lines.push(`{bold}Event Type:{/bold} ${event.type}`);
-  lines.push(`{bold}Sequence:{/bold} ${event.seq}`);
-  lines.push(`{bold}Timestamp:{/bold} ${event.at}`);
-  lines.push(`{bold}Actor:{/bold} ${event.actor}`);
+  lines.push(`{bold}${currentLang === 'zh' ? '事件类型：' : 'Event Type:'}{/bold} ${event.type}`);
+  lines.push(`{bold}${currentLang === 'zh' ? '序号：' : 'Sequence:'}{/bold} ${event.seq}`);
+  lines.push(`{bold}${currentLang === 'zh' ? '时间：' : 'Timestamp:'}{/bold} ${event.at}`);
+  lines.push(`{bold}${currentLang === 'zh' ? '执行者：' : 'Actor:'}{/bold} ${event.actor}`);
   lines.push('');
-  lines.push('{bold}Details:{/bold}');
+  lines.push(currentLang === 'zh' ? '{bold}详情：{/bold}' : '{bold}Details:{/bold}');
   
   switch (event.type) {
     case 'created':
-      lines.push(`Title: ${event.payload.title}`);
+      lines.push(`${currentLang === 'zh' ? '标题：' : 'Title:'} ${event.payload.title}`);
       if (event.payload.summary) {
-        lines.push(`Summary: ${event.payload.summary}`);
+        lines.push(`${currentLang === 'zh' ? '摘要：' : 'Summary:'} ${event.payload.summary}`);
       }
       break;
     case 'state_changed':
-      lines.push(`${event.payload.from} → ${event.payload.to}`);
+      lines.push(`${stateLabel(event.payload.from)} → ${stateLabel(event.payload.to)}`);
       break;
     case 'retitled':
-      lines.push(`New title: ${event.payload.title}`);
+      lines.push(`${currentLang === 'zh' ? '新标题：' : 'New title:'} ${event.payload.title}`);
       break;
     case 'summary_set':
       lines.push(event.payload.summary);
       break;
     case 'content_set':
-      lines.push(`Format: ${event.payload.format}`);
-      if (typeof event.payload.bytes === 'number') lines.push(`Bytes: ${event.payload.bytes}`);
+      lines.push(`${currentLang === 'zh' ? '格式：' : 'Format:'} ${event.payload.format}`);
+      if (typeof event.payload.bytes === 'number') lines.push(`${currentLang === 'zh' ? '字节：' : 'Bytes:'} ${event.payload.bytes}`);
       break;
     case 'log_appended':
       lines.push(event.payload.message);
       break;
     case 'archived':
       if (event.payload.reason) {
-        lines.push(`Reason: ${event.payload.reason}`);
+        lines.push(`${currentLang === 'zh' ? '原因：' : 'Reason:'} ${event.payload.reason}`);
       }
       break;
     case 'unarchived':
-      lines.push('Task was unarchived');
+      lines.push(currentLang === 'zh' ? '任务已取消归档' : 'Task was unarchived');
       break;
   }
   
@@ -153,7 +211,7 @@ function showEventDetails(
     width: '60%',
     height: '60%',
     border: 'line',
-    label: ' Event Details — Esc to close ',
+    label: currentLang === 'zh' ? ' 事件详情 — Esc 关闭 ' : ' Event Details — Esc to close ',
     keys: true,
     tags: true,
     scrollable: true,
@@ -186,7 +244,7 @@ async function showContent(
   id: string,
   onClose?: () => void
 ) {
-  const overlay = blessed.box({ top: 'center', left: 'center', width: '80%', height: '80%', border: 'line', label: ` Content ${id} — Esc to close `, keys: true });
+  const overlay = blessed.box({ top: 'center', left: 'center', width: '80%', height: '80%', border: 'line', label: currentLang === 'zh' ? ` 内容 ${id} — Esc 关闭 ` : ` Content ${id} — Esc to close `, keys: true });
   const contentBox = blessed.box({ parent: overlay, top: 0, left: 0, width: '100%', height: '100%', tags: true, keys: true, scrollable: true, alwaysScroll: true, scrollbar: { ch: ' ', style: { bg: 'white' } } });
 
   screen.append(overlay);
@@ -194,10 +252,10 @@ async function showContent(
 
   try {
     const res = await store.readContent(id);
-    const body = res.content || '(no content)';
+    const body = res.content || (currentLang === 'zh' ? '(无内容)' : '(no content)');
     contentBox.setContent(body);
   } catch (err: any) {
-    contentBox.setContent(`Error: ${err?.message ?? String(err)}`);
+    contentBox.setContent(`${currentLang === 'zh' ? '错误：' : 'Error:'} ${err?.message ?? String(err)}`);
   }
 
   const close = () => {
@@ -227,7 +285,7 @@ async function showTimeline(
   onCloseToList?: () => void,
   onBackToContent?: () => void
 ) {
-  const overlay = blessed.box({ top: 'center', left: 'center', width: '80%', height: '80%', border: 'line', label: ` Timeline ${id} — Esc to close `, keys: true });
+  const overlay = blessed.box({ top: 'center', left: 'center', width: '80%', height: '80%', border: 'line', label: currentLang === 'zh' ? ` 时间线 ${id} — Esc 关闭 ` : ` Timeline ${id} — Esc to close `, keys: true });
   const list = blessed.list({ parent: overlay, top: 0, left: 0, width: '100%', height: '100%', keys: true, vi: true, tags: true, scrollbar: { ch: ' ', style: { bg: 'white' } } });
   screen.append(overlay);
   screen.render();
@@ -243,7 +301,7 @@ async function showTimeline(
     });
     list.setItems(lines);
   } catch (err: any) {
-    list.setItems([`Error: ${err?.message ?? String(err)}`]);
+    list.setItems([`${currentLang === 'zh' ? '错误：' : 'Error:'} ${err?.message ?? String(err)}`]);
   }
   
   list.focus();
@@ -300,11 +358,8 @@ async function main() {
   }
 
   function updateHeader() {
-    const modeHelp =
-      mode === 'column'
-        ? '(←/→: column, Enter: select, r: reload, q: quit)'
-        : '(↑/↓: move, ←/→: switch, Enter: content, t: timeline, Esc: back, r: reload, q: quit)';
-    layout.header.setContent(`{bold}Wind Task Board{/bold}  ${modeHelp}`);
+    const modeHelp = mode === 'column' ? t('help_column') : t('help_task');
+    layout.header.setContent(`{bold}${t('title')}{/bold}  ${modeHelp}`);
   }
 
   function setColumnStyles() {
@@ -322,19 +377,21 @@ async function main() {
     if (mode === 'column') {
       const name = layout.order[activeColIdx];
       const items: any[] = (layout.cols[name] as any).taskItems ?? [];
-      layout.status.setContent(`${name}: ${items.length} tasks`);
+      layout.status.setContent(`${stateLabel(name as ColumnName)}: ${items.length} ${currentLang === 'zh' ? '个任务' : 'tasks'}`);
       return;
     }
     if (!list) return;
     const idx = selectedIdxByCol[layout.order[activeColIdx] as ColumnName] ?? 0;
     const items: any[] = (list as any).taskItems ?? [];
     if (!items.length) {
-      layout.status.setContent('No tasks');
+      layout.status.setContent(t('no_tasks'));
       return;
     }
-    const t = items[Math.min(Math.max(idx, 0), items.length - 1)];
+    const task = items[Math.min(Math.max(idx, 0), items.length - 1)];
     const col = layout.order[activeColIdx];
-    layout.status.setContent(`${col}: ${t.title} (${t.id}) · ${t.state}${t.archived_at ? ' · archived' : ''} · updated ${t.updated_at}`);
+    const archivedText = task.archived_at ? ` · ${t('archived_suffix')}` : '';
+    const updatedPrefix = t('updated_prefix');
+    layout.status.setContent(`${stateLabel(col as ColumnName)}: ${task.title} (${task.id}) · ${stateLabel(task.state)}${archivedText} · ${updatedPrefix} ${task.updated_at}`);
   }
 
   function focusColumn(idx: number) {
@@ -459,10 +516,25 @@ async function main() {
 
   screen.key(['r'], async () => {
     if (overlayActive) return; // Don't reload when overlay is active
-    layout.status.setContent('Reloading...');
+    layout.status.setContent(t('reloading'));
     screen.render();
     await renderBoard(layout, store);
     setColumnStyles();
+    updateHeader();
+    updateStatusFrom(activeList());
+    screen.render();
+  });
+
+  // F2: toggle language (English/中文)
+  screen.key(['f2'], () => {
+    currentLang = currentLang === 'en' ? 'zh' : 'en';
+    // Update terminal title
+    try { (screen as any).title = t('title'); } catch {}
+    // Update column labels
+    try { layout.cols.TODO.setLabel(` ${stateLabel('TODO')} `); } catch {}
+    try { layout.cols.ACTIVE.setLabel(` ${stateLabel('ACTIVE')} `); } catch {}
+    try { layout.cols.DONE.setLabel(` ${stateLabel('DONE')} `); } catch {}
+    try { layout.cols.ARCHIVED.setLabel(` ${stateLabel('ARCHIVED')} `); } catch {}
     updateHeader();
     updateStatusFrom(activeList());
     screen.render();

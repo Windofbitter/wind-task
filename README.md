@@ -1,3 +1,5 @@
+[English](README.md) | [中文](README.zh.md)
+
 MCP Task Server
 
 Minimal MCP server for LLM agents to manage simple tasks backed by files. Lifecycle is TODO → ACTIVE → DONE, with ARCHIVED as a lock (separate board column). Append-only event logs per task provide full history and context.
@@ -102,7 +104,7 @@ Terminal TUI (developer visualization)
   - Column mode: `←/→` switch columns, `Enter` enters column
   - Task mode: `↑/↓` move selection, `←/→` switch columns (preserve row), `Enter` opens content, `t` opens timeline, `Esc` back
   - Timeline overlay: `Esc` closes overlay
-  - Common: `r` reload, `q`/`Ctrl+C` quit
+  - Common: `F2` toggle language (English/中文), `r` reload, `q`/`Ctrl+C` quit
 
 The TUI reads from `.wind-task/` and is read-only (no mutations).
 
