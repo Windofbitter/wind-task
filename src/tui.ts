@@ -64,6 +64,8 @@ async function loadBoard(store: TaskStore): Promise<BoardView> {
 function makeScreen() {
   const screen = blessed.screen({
     smartCSR: true,
+    // Enable proper width handling and rendering for CJK/Unicode characters
+    fullUnicode: true,
     title: t('title'),
   });
   screen.key(['C-c', 'q'], () => process.exit(0));
