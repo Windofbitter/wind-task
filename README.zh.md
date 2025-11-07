@@ -120,3 +120,22 @@ TUI 从 `.wind-task/` 读取，且是只读（不提供修改）。
 - ID 使用 ULID，便于稳定排序和阅读
 - 任务内容保存在 `.wind-task/<id>/content.md`，并通过 `tasks://content/{id}` 暴露
 
+Codex CLI（方法一：编辑 ~/.codex/config.toml）
+
+- 编辑或创建 `~/.codex/config.toml`，在 `[mcp_servers]` 下添加条目：
+
+  [mcp_servers.mcp-task-server]
+  type = "stdio"
+  command = "node"
+  args = ["/absolute/path/to/this/repo/dist/index.js"]
+  cwd = "/absolute/path/to/this/repo"  # 确保 `.wind-task/` 相对仓库根目录
+
+- 验证注册与详情：
+
+  codex mcp list
+  codex mcp get mcp-task-server --json
+
+- 说明
+  - `args` 与 `cwd` 建议使用绝对路径。
+  - 本服务器在 `cwd` 目录下读写 `.wind-task/`，请将 `cwd` 设为仓库根目录。
+  - 若仓库位置变更，请同步更新 `~/.codex/config.toml` 中的路径。

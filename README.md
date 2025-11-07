@@ -119,3 +119,23 @@ Notes
 - All mutating tools require `expected_last_seq` to guard against races
 - IDs are ULIDs for stable sorting and readability
 - Task content is stored in `.wind-task/<id>/content.md` and exposed via `tasks://content/{id}`
+
+Codex CLI (Method 1: Edit ~/.codex/config.toml)
+
+- Edit or create `~/.codex/config.toml` and add an entry under `[mcp_servers]`:
+
+  [mcp_servers.mcp-task-server]
+  type = "stdio"
+  command = "node"
+  args = ["/absolute/path/to/this/repo/dist/index.js"]
+  cwd = "/absolute/path/to/this/repo"  # ensures `.wind-task/` resolves at repo root
+
+- Verify registration and details:
+
+  codex mcp list
+  codex mcp get mcp-task-server --json
+
+- Notes
+  - Use absolute paths for `args` and `cwd`.
+  - This server reads and writes `.wind-task/` under `cwd`. Keep `cwd` set to the repo root.
+  - If you change repo location, update the paths in `~/.codex/config.toml`.
