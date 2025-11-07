@@ -1,6 +1,8 @@
+#!/usr/bin/env node
 import blessed from 'blessed';
 import { TaskStore } from './store.js';
 import { BoardView } from './types.js';
+import { loadProjects, resolveStoreDir } from './config.js';
 
 type Lang = 'en' | 'zh';
 
@@ -55,7 +57,8 @@ function stateLabel(state: 'TODO' | 'ACTIVE' | 'DONE' | 'ARCHIVED'): string {
 type ColumnName = 'TODO' | 'ACTIVE' | 'DONE' | 'ARCHIVED';
 type Mode = 'column' | 'task';
 
-const BASE_DIR = '.wind-task';
+// TUI is config-driven: requires a project name via env
+// WIND_PROJECT (preferred) or WIND_TASK_PROJECT (legacy).
 
 async function loadBoard(store: TaskStore): Promise<BoardView> {
   return store.boardView();
@@ -337,7 +340,19 @@ async function showTimeline(
 }
 
 async function main() {
-  const store = new TaskStore({ baseDir: BASE_DIR });
+  const projectName = process.env.WIND_PROJECT || process.env.WIND_TASK_PROJECT;
+  if (!projectName) {
+    throw new Error('Missing WIND_PROJECT. Set WIND_PROJECT to a configured project name.');
+  }
+  const projects = await loadProjects();
+  const configured = projects[projectName];
+  if (!configured) {
+    const known = Object.keys(projects);
+    const hint = known.length ? `Known projects: ${known.join(', ')}` : 'No projects configured';
+    throw new Error(`Unknown project: ${projectName}. ${hint}`);
+  }
+  const storeDir = resolveStoreDir(configured);
+  const store = new TaskStore({ baseDir: storeDir });
   await store.init();
 
   const screen = makeScreen();

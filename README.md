@@ -33,16 +33,17 @@ Quick Start
 Config Setup
 
 - Location: `~/.wind-task/config.json` (user-level config)
-- Minimal example:
+- Minimal example (recommended: map to your project root; storage goes under ".wind-task"):
 
   {
-    "projects": { "projA": "/abs/path/to/projA/.wind-task" }
+    "projects": { "projA": "/abs/path/to/projA" }
   }
 
 - Rules
-  - Use absolute paths for `base_dir`.
+  - Use absolute paths for `base_dir` (interpreted as project root by default).
   - `~/` expands to your home directory; relative paths are normalized to absolute.
-  - The server creates `base_dir` if missing and stores task data under it.
+  - The server resolves storage to `<base_dir>/.wind-task` by default and creates it if missing.
+  - Backward compatible: if your config value already ends with `/.wind-task`, it is used as-is.
 - Verify
   - Read `config://projects` via your MCP host, or open `~/.wind-task/config.json`.
 - Common errors
@@ -96,7 +97,7 @@ MCP Host Integrations
 - Add under `mcpServers`:
   {
     "mcpServers": {
-      "mcp-task-server": {
+      "wind-task": {
         "command": "node",
         "args": ["dist/index.js"],
         "env": {},
@@ -112,7 +113,7 @@ MCP Host Integrations
 
 - In Settings (JSON) add:
   "anthropic.mcpServers": {
-    "mcp-task-server": {
+    "wind-task": {
       "command": "node",
       "args": ["dist/index.js"],
       "env": {},
@@ -134,13 +135,13 @@ MCP Host Integrations
 <summary>Codex CLI</summary>
 
 - Edit `~/.codex/config.toml`:
-  [mcp_servers.mcp-task-server]
+  [mcp_servers.wind-task]
   type = "stdio"
   command = "node"
   args = ["/absolute/path/to/this/repo/dist/index.js"]
 - Verify:
   codex mcp list
-  codex mcp get mcp-task-server --json
+  codex mcp get wind-task --json
 
 </details>
 
@@ -170,7 +171,7 @@ MCP Host Integrations
 
 Data Directory
 
-- Default base dir: `.wind-task/` (per project; pointed to by config)
+- Default store dir: `<project root>/.wind-task` (derived from config)
 - Per-task folder structure:
   - `.wind-task/<id>/task.json`
   - `.wind-task/<id>/events.jsonl`
@@ -179,7 +180,9 @@ Terminal TUI (developer visualization)
 
 - Start the TUI:
 
-  npm run tui
+  - Dev (in repo): `WIND_PROJECT=projA npm run tui`
+  - npx (no install): `WIND_PROJECT=projA npx wind-task-tui`
+  - Global install: `WIND_PROJECT=projA wind-task-tui`
 
 - Controls:
   - Column mode: `←/→` switch columns, `Enter` enters column
@@ -187,7 +190,7 @@ Terminal TUI (developer visualization)
   - Timeline overlay: `Esc` closes overlay
   - Common: `F2` toggle language (English/中文), `r` reload, `q`/`Ctrl+C` quit
 
-The TUI reads from `.wind-task/` and is read-only (no mutations).
+The TUI reads from the configured project’s storage (resolved as `<root>/.wind-task`) and is read-only (no mutations).
 
 Smoke Test (optional)
 
@@ -204,6 +207,7 @@ Notes for CLI use
 
 - Use absolute paths for `args`.
 - The server ignores cwd; it resolves project storage via `~/.wind-task/config.json`.
+- Set `WIND_PROJECT=projA` for the TUI and sample scripts.
 - Set `WIND_PROJECT=projA` when using sample scripts (see below).
 Projects (multi-repo)
 
@@ -211,8 +215,8 @@ Projects (multi-repo)
 
   {
     "projects": {
-      "projA": "/abs/path/to/projA/.wind-task",
-      "projB": "/abs/path/to/projB/.wind-task"
+      "projA": "/abs/path/to/projA",
+      "projB": "/abs/path/to/projB"
     }
   }
 

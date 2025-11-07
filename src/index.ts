@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import {
@@ -8,7 +9,7 @@ import {
   CallToolRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 import { TaskStore, ConflictError, ArchivedError, NotFoundError } from './store.js';
-import { loadProjects, isValidProjectName, configPath, saveProjects, normalizeBaseDir } from './config.js';
+import { loadProjects, isValidProjectName, configPath, saveProjects, normalizeBaseDir, resolveStoreDir } from './config.js';
 
 async function main() {
   // Load project mapping from user config and cache TaskStores per project
@@ -22,15 +23,16 @@ async function main() {
     if (!isValidProjectName(project)) {
       throw new Error(`Invalid project name: ${project}`);
     }
-    const baseDir = projects[project];
-    if (!baseDir) {
+    const configuredPath = projects[project];
+    if (!configuredPath) {
       const known = Object.keys(projects);
       const hint = known.length ? `Known projects: ${known.join(', ')}` : `No projects configured at ${configPath()}`;
       throw new Error(`Unknown project: ${project}. ${hint}`);
     }
     let s = stores.get(project);
     if (!s) {
-      s = new TaskStore({ baseDir });
+      const storeDir = resolveStoreDir(configuredPath);
+      s = new TaskStore({ baseDir: storeDir });
       await s.init();
       stores.set(project, s);
     }
@@ -38,7 +40,7 @@ async function main() {
   }
 
   const server = new Server(
-    { name: 'mcp-task-server', version: '0.2.0' },
+    { name: 'wind-task', version: '0.2.0' },
     {
       capabilities: {
         resources: {},
@@ -307,7 +309,9 @@ async function main() {
           const baseDir = normalizeBaseDir(String(base_dir || ''));
           if (!baseDir) throw new Error('base_dir is empty');
           const fs = await import('fs');
-          await fs.promises.mkdir(baseDir, { recursive: true });
+          const storeDir = resolveStoreDir(baseDir);
+          await fs.promises.mkdir(storeDir, { recursive: true });
+          // Store the configured root (or legacy store path) as-is
           projects = { ...projects, [key]: baseDir };
           await saveProjects(projects);
           return { content: [{ type: 'text', text: JSON.stringify({ ok: true, project: key, base_dir: baseDir }, null, 2) }] } as any;
@@ -320,7 +324,8 @@ async function main() {
           const baseDir = normalizeBaseDir(String(base_dir || ''));
           if (!baseDir) throw new Error('base_dir is empty');
           const fs = await import('fs');
-          await fs.promises.mkdir(baseDir, { recursive: true });
+          const storeDir = resolveStoreDir(baseDir);
+          await fs.promises.mkdir(storeDir, { recursive: true });
           projects = { ...projects, [key]: baseDir };
           await saveProjects(projects);
           // Clear cached store so next access uses new base dir

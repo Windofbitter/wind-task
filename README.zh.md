@@ -111,7 +111,7 @@ MCP 宿主集成
 - 在 `mcpServers` 下添加：
   {
     "mcpServers": {
-      "mcp-task-server": {
+      "wind-task": {
         "command": "node",
         "args": ["dist/index.js"],
         "env": {},
@@ -127,7 +127,7 @@ MCP 宿主集成
 
 - 在设置（JSON）中添加：
   "anthropic.mcpServers": {
-    "mcp-task-server": {
+    "wind-task": {
       "command": "node",
       "args": ["dist/index.js"],
       "env": {},
@@ -149,13 +149,13 @@ MCP 宿主集成
 <summary>Codex CLI</summary>
 
 - 编辑 `~/.codex/config.toml`：
-  [mcp_servers.mcp-task-server]
+  [mcp_servers.wind-task]
   type = "stdio"
   command = "node"
   args = ["/absolute/path/to/this/repo/dist/index.js"]
 - 验证：
   codex mcp list
-  codex mcp get mcp-task-server --json
+  codex mcp get wind-task --json
 
 </details>
 
@@ -185,7 +185,9 @@ MCP 宿主集成
 
 - 启动：
 
-  npm run tui
+  - 开发（仓库内）：`WIND_PROJECT=projA npm run tui`
+  - npx（无需安装）：`WIND_PROJECT=projA npx wind-task-tui`
+  - 全局安装：`WIND_PROJECT=projA wind-task-tui`
 
 - 控制：
   - 列模式：`←/→` 切换列，`Enter` 进入列
@@ -193,7 +195,7 @@ MCP 宿主集成
   - 时间线浮层：`Esc` 关闭
   - 通用：`F2` 切换语言（English/中文），`r` 刷新，`q`/`Ctrl+C` 退出
 
-TUI 从 `.wind-task/` 读取，且是只读（不提供修改）。
+TUI 从配置的项目存储中读取（解析为 `<root>/.wind-task`），且是只读（不提供修改）。
 
 冒烟测试（可选）
 
@@ -211,4 +213,4 @@ CLI 使用说明
 
 - `args` 建议使用绝对路径。
 - 服务器忽略 cwd；它通过 `~/.wind-task/config.json` 解析项目存储位置。
-- 使用样例脚本时请设置 `WIND_PROJECT=projA`（见上文冒烟测试）。
+- 使用 TUI 与样例脚本时请设置 `WIND_PROJECT=projA`（见上文冒烟测试）。

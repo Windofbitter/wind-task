@@ -1,6 +1,6 @@
 import { promises as fs } from 'fs';
 import { homedir } from 'os';
-import { join, resolve, isAbsolute, dirname } from 'path';
+import { join, resolve, isAbsolute, dirname, basename } from 'path';
 
 export interface ProjectsConfig {
   projects?: Record<string, string>;
@@ -63,4 +63,18 @@ export async function saveProjects(projects: Record<string, string>): Promise<vo
   const tmp = CONFIG_PATH + `.tmp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   await fs.writeFile(tmp, body, 'utf8');
   await fs.rename(tmp, CONFIG_PATH);
+}
+
+/**
+ * Resolve the actual task store directory for a given configured path.
+ * Back-compat: if the path already ends with '/.wind-task' (or basename is '.wind-task'),
+ * use it as-is; otherwise treat it as the project root and append '/.wind-task'.
+ */
+export function resolveStoreDir(configPath: string): string {
+  const base = normalizeBaseDir(configPath);
+  if (!base) return base;
+  try {
+    if (basename(base) === '.wind-task') return base;
+  } catch {}
+  return join(base, '.wind-task');
 }
