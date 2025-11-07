@@ -28,15 +28,17 @@ MCP 任务服务器
 - 安装：`npm install`
 - 启动服务器（stdio）：`npm run dev`
 - 构建并运行：`npm run build && npm start`
-- 启动 TUI（只读看板和时间线）：`npm run tui`
+- 启动 TUI（只读看板和时间线）：`WIND_PROJECT=projA npm run tui`
+  - 或通过 npx 运行：`WIND_PROJECT=projA npx wind-task-tui`
+  - 服务器通过 npx：`npx wind-task`
 
 配置准备
 
 - 配置文件位置：`~/.wind-task/config.json`（用户级配置）
-- 最小示例：
+- 最小示例（推荐：映射到项目根目录；存储位于该目录下的 `.wind-task`）：
 
   {
-    "projects": { "projA": "/abs/path/to/projA/.wind-task" }
+    "projects": { "projA": "/abs/path/to/projA" }
   }
 
 - 规则

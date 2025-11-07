@@ -28,7 +28,9 @@ Quick Start
 - Install: `npm install`
 - Start server (stdio): `npm run dev`
 - Build and run: `npm run build && npm start`
-- TUI (read‑only board and timeline): `npm run tui`
+- TUI (read‑only board and timeline): `WIND_PROJECT=projA npm run tui`
+  - Or run via npx: `WIND_PROJECT=projA npx wind-task-tui`
+  - Server via npx: `npx wind-task`
 
 Config Setup
 
