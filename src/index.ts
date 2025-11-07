@@ -8,11 +8,11 @@ import {
   CallToolRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 import { TaskStore, ConflictError, ArchivedError, NotFoundError } from './store.js';
-import { loadProjects, isValidProjectName, configPath } from './config.js';
+import { loadProjects, isValidProjectName, configPath, saveProjects, normalizeBaseDir } from './config.js';
 
 async function main() {
   // Load project mapping from user config and cache TaskStores per project
-  const projects = await loadProjects();
+  let projects = await loadProjects();
   const stores = new Map<string, TaskStore>();
 
   async function storeFor(project: string | undefined): Promise<TaskStore> {
@@ -63,6 +63,12 @@ async function main() {
           description: 'Kanban with TODO/ACTIVE/DONE and ARCHIVED (use ?project=NAME)',
           mimeType: 'application/json',
         },
+        {
+          uri: 'config://projects',
+          name: 'Project Config',
+          description: `Current project mapping from ${configPath()}`,
+          mimeType: 'application/json',
+        },
       ],
     } as any;
   });
@@ -98,6 +104,10 @@ async function main() {
     const cleanUri = qIndex >= 0 ? uri.substring(0, qIndex) : uri;
     const query = qIndex >= 0 ? new URLSearchParams(uri.substring(qIndex + 1)) : undefined;
     const project = query?.get('project') ?? undefined;
+    if (cleanUri === 'config://projects') {
+      const text = JSON.stringify({ projects }, null, 2);
+      return { contents: [{ uri, mimeType: 'application/json', text }] } as any;
+    }
     const s = await storeFor(project);
     const jsonText = await renderResourceUri(s, cleanUri);
     return {
@@ -115,6 +125,44 @@ async function main() {
   server.setRequestHandler(ListToolsRequestSchema, async () => {
     return {
       tools: [
+        {
+          name: 'add_project',
+          description: 'Add a new project mapping (project -> base_dir)',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              project: { type: 'string' },
+              base_dir: { type: 'string' },
+            },
+            required: ['project', 'base_dir'],
+            additionalProperties: false,
+          },
+        },
+        {
+          name: 'update_project',
+          description: 'Update an existing project\'s base directory',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              project: { type: 'string' },
+              base_dir: { type: 'string' },
+            },
+            required: ['project', 'base_dir'],
+            additionalProperties: false,
+          },
+        },
+        {
+          name: 'remove_project',
+          description: 'Remove a project mapping',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              project: { type: 'string' },
+            },
+            required: ['project'],
+            additionalProperties: false,
+          },
+        },
         {
           name: 'create_task',
           description: 'Create a new task in TODO with an optional summary',
@@ -251,6 +299,46 @@ async function main() {
     try {
       let task: any;
       switch (name) {
+        case 'add_project': {
+          const { project, base_dir } = args || {};
+          const key = String(project || '').trim();
+          if (!isValidProjectName(key)) throw new Error(`Invalid project name: ${project}`);
+          if (projects[key]) throw new Error(`Project already exists: ${key}`);
+          const baseDir = normalizeBaseDir(String(base_dir || ''));
+          if (!baseDir) throw new Error('base_dir is empty');
+          const fs = await import('fs');
+          await fs.promises.mkdir(baseDir, { recursive: true });
+          projects = { ...projects, [key]: baseDir };
+          await saveProjects(projects);
+          return { content: [{ type: 'text', text: JSON.stringify({ ok: true, project: key, base_dir: baseDir }, null, 2) }] } as any;
+        }
+        case 'update_project': {
+          const { project, base_dir } = args || {};
+          const key = String(project || '').trim();
+          if (!isValidProjectName(key)) throw new Error(`Invalid project name: ${project}`);
+          if (!projects[key]) throw new Error(`Unknown project: ${key}`);
+          const baseDir = normalizeBaseDir(String(base_dir || ''));
+          if (!baseDir) throw new Error('base_dir is empty');
+          const fs = await import('fs');
+          await fs.promises.mkdir(baseDir, { recursive: true });
+          projects = { ...projects, [key]: baseDir };
+          await saveProjects(projects);
+          // Clear cached store so next access uses new base dir
+          stores.delete(key);
+          return { content: [{ type: 'text', text: JSON.stringify({ ok: true, project: key, base_dir: baseDir }, null, 2) }] } as any;
+        }
+        case 'remove_project': {
+          const { project } = args || {};
+          const key = String(project || '').trim();
+          if (!isValidProjectName(key)) throw new Error(`Invalid project name: ${project}`);
+          if (!projects[key]) throw new Error(`Unknown project: ${key}`);
+          const next = { ...projects } as any;
+          delete next[key];
+          projects = next;
+          await saveProjects(projects);
+          stores.delete(key);
+          return { content: [{ type: 'text', text: JSON.stringify({ ok: true, project: key }, null, 2) }] } as any;
+        }
         case 'create_task': {
           const { project, title, summary, actor } = args || {};
           const s = await storeFor(project ? String(project) : undefined);

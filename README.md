@@ -38,8 +38,12 @@ MCP Surface
   - `tasks://task/{id}?project={project}` — full `task.json` (JSON)
   - `tasks://timeline/{id}?project={project}` — `events.jsonl` rendered as JSON array (JSON)
   - `tasks://content/{id}?project={project}` — long-form task content (text/markdown)
+  - `config://projects` — read-only view of current project mapping (JSON)
 
 - Tools
+  - `add_project(project, base_dir)`
+  - `update_project(project, base_dir)`
+  - `remove_project(project)`
   - `create_task(project, title, summary?, actor)`
   - `retitle(project, id, title, expected_last_seq, actor)`
   - `set_state(project, id, state, expected_last_seq, actor)`
@@ -49,7 +53,7 @@ MCP Surface
   - `archive(project, id, reason?, expected_last_seq, actor)`
   - `unarchive(project, id, expected_last_seq, actor)`
 
-Using With LLM Hosts
+MCP Host Integrations
 
 - Claude Desktop
   - Edit config file (platform‑specific path):
@@ -79,6 +83,18 @@ Using With LLM Hosts
         "transport": "stdio"
       }
     }
+
+- Codex CLI (Edit ~/.codex/config.toml)
+
+  [mcp_servers.mcp-task-server]
+  type = "stdio"
+  command = "node"
+  args = ["/absolute/path/to/this/repo/dist/index.js"]
+
+  Verify:
+
+  codex mcp list
+  codex mcp get mcp-task-server --json
 
 - Notes
   - Reads are exposed as resources (use `resources/read`) and must include `?project=NAME`.
@@ -117,25 +133,11 @@ Notes
 - All mutating tools require `expected_last_seq` to guard against races
 - IDs are ULIDs for stable sorting and readability
 - Task content is stored in `.wind-task/<id>/content.md` and exposed via `tasks://content/{id}`
+Notes for CLI use
 
-Codex CLI (Method 1: Edit ~/.codex/config.toml)
-
-- Edit or create `~/.codex/config.toml` and add an entry under `[mcp_servers]`:
-
-  [mcp_servers.mcp-task-server]
-  type = "stdio"
-  command = "node"
-  args = ["/absolute/path/to/this/repo/dist/index.js"]
-
-- Verify registration and details:
-
-  codex mcp list
-  codex mcp get mcp-task-server --json
-
-- Notes
-  - Use absolute paths for `args`.
-  - The server ignores cwd; it resolves project storage via `~/.wind-task/config.json`.
-  - Set `WIND_PROJECT=projA` when using sample scripts (see below).
+- Use absolute paths for `args`.
+- The server ignores cwd; it resolves project storage via `~/.wind-task/config.json`.
+- Set `WIND_PROJECT=projA` when using sample scripts (see below).
 Projects (multi-repo)
 
 - Configure projects in `~/.wind-task/config.json`:

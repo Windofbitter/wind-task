@@ -31,12 +31,26 @@ async function main() {
 
   const resources = await client.request({ method: 'resources/list' }, ListResourcesResultSchema);
   console.log('resources:', resources.resources.map(r => r.uri));
+  const hasConfig = resources.resources.some(r => r.uri === 'config://projects');
+  if (!hasConfig) throw new Error('config://projects resource not exposed');
 
   const templates = await client.request({ method: 'resources/templates/list' }, ListResourceTemplatesResultSchema);
   console.log('templates:', templates.resourceTemplates.map(t => t.uriTemplate));
 
   const tools = await client.request({ method: 'tools/list' }, ListToolsResultSchema);
   console.log('tools:', tools.tools.map(t => t.name));
+  const expectedTools = ['add_project','update_project','remove_project','create_task'];
+  for (const t of expectedTools) {
+    if (!tools.tools.some(x => x.name === t)) throw new Error(`Expected tool missing: ${t}`);
+  }
+
+  // Read current config mapping
+  const cfg = await client.request({ method: 'resources/read', params: { uri: 'config://projects' } }, ReadResourceResultSchema);
+  const cfgText = textFromContent(cfg.contents);
+  const cfgJson = JSON.parse(cfgText);
+  if (!cfgJson?.projects || !cfgJson.projects[project]) {
+    throw new Error(`Project ${project} not found in config://projects`);
+  }
 
   // Create a task
   const createRes = await client.request({
@@ -92,6 +106,15 @@ async function main() {
   const taskText = textFromContent(taskView.contents);
   const taskJson = JSON.parse(taskText);
   console.log('task state:', taskJson.state, 'last_seq:', taskJson.last_event_seq);
+
+  // Read board
+  const board = await client.request({ method: 'resources/read', params: { uri: `tasks://board?project=${encodeURIComponent(project)}` } }, ReadResourceResultSchema);
+  const boardText = textFromContent(board.contents);
+  const boardJson = JSON.parse(boardText);
+  console.log('board columns:', boardJson.columns.map(c => `${c.name}:${c.items.length}`).join(', '));
+
+  // Close client/transport to exit cleanly
+  await client.close();
 }
 
 main().catch((err) => {

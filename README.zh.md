@@ -53,8 +53,12 @@ MCP 接口
   - `tasks://task/{id}?project={project}` — 完整 `task.json`（JSON）
   - `tasks://timeline/{id}?project={project}` — 渲染后的时间线（JSON）
   - `tasks://content/{id}?project={project}` — 任务长文本内容（text/markdown）
+  - `config://projects` — 当前项目映射（只读 JSON）
 
 - 工具（Tools）
+  - `add_project(project, base_dir)`
+  - `update_project(project, base_dir)`
+  - `remove_project(project)`
   - `create_task(project, title, summary?, actor)`
   - `retitle(project, id, title, expected_last_seq, actor)`
   - `set_state(project, id, state, expected_last_seq, actor)`
@@ -64,7 +68,7 @@ MCP 接口
   - `archive(project, id, reason?, expected_last_seq, actor)`
   - `unarchive(project, id, expected_last_seq, actor)`
 
-与 LLM 宿主配合使用
+MCP 宿主集成
 
 - Claude Desktop
   - 编辑配置文件（因平台而异）：
@@ -77,7 +81,6 @@ MCP 接口
         "mcp-task-server": {
           "command": "node",
           "args": ["dist/index.js"],
-          
           "env": {},
           "transport": "stdio"
         }
@@ -91,11 +94,17 @@ MCP 接口
       "mcp-task-server": {
         "command": "node",
         "args": ["dist/index.js"],
-        
         "env": {},
         "transport": "stdio"
       }
     }
+
+- Codex CLI（编辑 ~/.codex/config.toml）
+
+  [mcp_servers.mcp-task-server]
+  type = "stdio"
+  command = "node"
+  args = ["/absolute/path/to/this/repo/dist/index.js"]
 
 - 说明
   - 读取能力以资源形式暴露（使用 `resources/read`），必须带上 `?project=NAME`。
