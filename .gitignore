@@ -7,9 +7,28 @@ dist/
 # Runtime data
 .wind-task/
 
+# TypeScript
+*.tsbuildinfo
+
+# Environment
+.env
+.env.*
+
+# Coverage / caches
+coverage/
+.nyc_output/
+.eslintcache
+.cache/
+
+# Editors / IDEs
+.vscode/
+.idea/
+
 # Misc
 .DS_Store
 npm-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+# Ensure scripts are included
+!scripts/

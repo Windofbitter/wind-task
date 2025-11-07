@@ -306,7 +306,7 @@ async function main() {
   function leaveColumn() {
     mode = 'column';
     const list = activeList();
-    const sel = typeof list.selected === 'number' ? list.selected : 0;
+    const sel = typeof (list as any).selected === 'number' ? (list as any).selected : 0;
     selectedIdxByCol[layout.order[activeColIdx] as ColumnName] = sel;
     setColumnStyles();
     updateHeader();
@@ -317,7 +317,7 @@ async function main() {
   function moveFocus(delta: number) {
     const current = activeColIdx;
     const curList = activeList();
-    const curIdx = typeof curList.selected === 'number' ? curList.selected : (selectedIdxByCol[layout.order[current] as ColumnName] ?? 0);
+    const curIdx = typeof (curList as any).selected === 'number' ? (curList as any).selected : (selectedIdxByCol[layout.order[current] as ColumnName] ?? 0);
     const next = (current + delta + layout.order.length) % layout.order.length;
     activeColIdx = next;
     const nextList = activeList();
@@ -351,7 +351,7 @@ async function main() {
       return;
     }
     const list = activeList();
-    const idx = typeof list.selected === 'number' ? list.selected : 0;
+    const idx = typeof (list as any).selected === 'number' ? (list as any).selected : 0;
     const items: any[] = (list as any).taskItems ?? [];
     const id = items[idx]?.id || items[items.length - 1]?.id;
     if (id) {
