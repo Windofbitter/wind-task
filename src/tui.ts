@@ -195,7 +195,12 @@ async function main() {
 
   function focusColumn(idx: number) {
     activeColIdx = (idx + layout.order.length) % layout.order.length;
-    activeList().focus();
+    if (mode === 'task') {
+      try { (activeList() as any).focus(); } catch {}
+    } else {
+      // In column mode, keep focus off lists to avoid up/down moving selection
+      try { (layout.header as any).focus?.(); } catch {}
+    }
     setColumnStyles();
     updateHeader();
     updateStatusFrom(activeList());
@@ -208,6 +213,7 @@ async function main() {
     const list = activeList();
     const items: any[] = (list as any).taskItems ?? [];
     if (items.length > 0) list.select(Math.min(selectedIdxByCol[layout.order[activeColIdx] as ColumnName] ?? 0, items.length - 1));
+    try { (list as any).focus(); } catch {}
     setColumnStyles();
     updateHeader();
     updateStatusFrom(list);
@@ -220,6 +226,8 @@ async function main() {
     const list = activeList();
     const sel = typeof (list as any).selected === 'number' ? (list as any).selected : 0;
     selectedIdxByCol[layout.order[activeColIdx] as ColumnName] = sel;
+    // Move focus away from lists to avoid up/down moving selection in column mode
+    try { (layout.header as any).focus?.(); } catch {}
     setColumnStyles();
     updateHeader();
     updateStatusFrom(list);
