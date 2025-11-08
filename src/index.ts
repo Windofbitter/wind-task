@@ -10,6 +10,18 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { TaskStore, ConflictError, ArchivedError, NotFoundError } from './store.js';
 import { loadProjects, isValidProjectName, configPath, saveProjects, normalizeBaseDir, resolveStoreDir } from './config.js';
+import { readFile } from 'fs/promises';
+
+async function getVersion(): Promise<string> {
+  try {
+    const pkgUrl = new URL('../package.json', import.meta.url);
+    const raw = await readFile(pkgUrl, 'utf8');
+    const json = JSON.parse(raw);
+    return typeof json.version === 'string' ? json.version : '0.0.0';
+  } catch {
+    return '0.0.0';
+  }
+}
 
 async function main() {
   // Load project mapping from user config and cache TaskStores per project
@@ -40,7 +52,7 @@ async function main() {
   }
 
   const server = new Server(
-    { name: 'wind-task', version: '0.2.0' },
+    { name: 'wind-task', version: await getVersion() },
     {
       capabilities: {
         resources: {},
