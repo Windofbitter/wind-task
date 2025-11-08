@@ -34,6 +34,7 @@ export const I18N = {
     btn_timeline: 'Timeline',
     btn_archive: 'Archive',
     btn_unarchive: 'Unarchive',
+    btn_delete: 'Delete',
     btn_reload: 'Reload',
     btn_help: 'Help',
     // Dialogs
@@ -43,6 +44,7 @@ export const I18N = {
     dlg_log_title: 'Append Log',
     dlg_archive_title: 'Archive Task',
     dlg_unarchive_title: 'Unarchive Task',
+    dlg_delete_title: 'Delete Task',
     field_title: 'Title',
     field_summary: 'Summary',
     field_message: 'Message',
@@ -52,6 +54,7 @@ export const I18N = {
     // Status / errors
     err_no_task: 'No task selected',
     err_archived: 'Task is archived',
+    err_delete_requires_archive: 'Task must be archived before deletion',
     info_conflict: 'Changed elsewhere; reloading…',
     info_done: 'Done'
   },
@@ -78,6 +81,7 @@ export const I18N = {
     btn_timeline: '时间线',
     btn_archive: '归档',
     btn_unarchive: '取消归档',
+    btn_delete: '删除',
     btn_reload: '刷新',
     btn_help: '帮助',
     // Dialogs
@@ -87,6 +91,7 @@ export const I18N = {
     dlg_log_title: '追加日志',
     dlg_archive_title: '归档任务',
     dlg_unarchive_title: '取消归档任务',
+    dlg_delete_title: '删除任务',
     field_title: '标题',
     field_summary: '摘要',
     field_message: '消息',
@@ -96,6 +101,7 @@ export const I18N = {
     // Status / errors
     err_no_task: '未选择任务',
     err_archived: '任务已归档',
+    err_delete_requires_archive: '删除前必须先归档任务',
     info_conflict: '已在其他地方变更；正在刷新…',
     info_done: '已完成'
   }
@@ -113,4 +119,3 @@ export function stateLabel(state: 'TODO' | 'ACTIVE' | 'DONE' | 'ARCHIVED'): stri
     case 'ARCHIVED': return t('col_ARCHIVED');
   }
 }
-

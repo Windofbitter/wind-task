@@ -470,6 +470,19 @@ async function main() {
     screen.render();
   }
 
+  async function actionDelete() {
+    const meta = selectedTaskMeta();
+    if (!meta) { setStatusMessage(t('err_no_task')); return; }
+    if (!meta.archived_at) { setStatusMessage(t('err_delete_requires_archive')); return; }
+    withDialog((onClose) => {
+      showConfirmDialog(screen, t('dlg_delete_title'), meta.title, async () => {
+        await mutateThenReload(async (expected) => {
+          await store.deleteTask(meta.id, { expected_last_seq: expected, actor: actorId() });
+        });
+      }, onClose);
+    });
+  }
+
   async function actionReload() {
     layout.status.setContent(t('reloading'));
     screen.render();
@@ -487,6 +500,7 @@ async function main() {
     { key: 'log', label: t('btn_log'), handler: actionLog },
     { key: 'timeline', label: t('btn_timeline'), handler: actionTimeline },
     { key: 'archive', label: t('btn_archive'), handler: actionArchiveToggle },
+    { key: 'delete', label: t('btn_delete'), handler: actionDelete },
     { key: 'reload', label: t('btn_reload'), handler: actionReload },
   ];
   renderActionBar();
@@ -607,6 +621,7 @@ async function main() {
       { key: 'log', label: t('btn_log'), handler: actionLog },
       { key: 'timeline', label: t('btn_timeline'), handler: actionTimeline },
       { key: 'archive', label: selectedTaskMeta()?.archived_at ? t('btn_unarchive') : t('btn_archive'), handler: actionArchiveToggle },
+      { key: 'delete', label: t('btn_delete'), handler: actionDelete },
       { key: 'reload', label: t('btn_reload'), handler: actionReload },
     ];
     renderActionBar();

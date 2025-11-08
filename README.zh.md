@@ -208,6 +208,7 @@ MCP 宿主集成
   - 日志 — 追加一条日志
   - 时间线 — 打开时间线浮层
   - 归档/取消归档 — 需确认
+  - 删除 — 永久删除已归档任务（不可恢复）
   - 刷新 — 刷新看板
 
 破坏性操作均需确认。发生并发冲突（其他地方已修改）时会自动刷新，并尽量保留选择位置。
@@ -219,6 +220,7 @@ MCP 宿主集成
 备注
 
 - 归档任务会阻止除 `unarchive` 外的所有修改
+- `delete_task` 会永久删除已归档任务的目录（task.json、events.jsonl、content.md 等）。调用需要正确的 `expected_last_seq`，且任务必须已归档。
 - 所有修改类工具都需要 `expected_last_seq` 来防止竞争
 - ID 使用 ULID，便于稳定排序和阅读
 - 任务内容保存在 `.wind-task/<id>/content.md`，并通过 `tasks://content/{id}` 暴露

@@ -77,6 +77,7 @@ MCP Surface
   - `set_content(project, id, content, expected_last_seq, actor, format?)`
   - `archive(project, id, reason?, expected_last_seq, actor)`
   - `unarchive(project, id, expected_last_seq, actor)`
+  - `delete_task(project, id, expected_last_seq, actor)`
 
 MCP Host Integrations
 
@@ -203,6 +204,7 @@ Actions (keyboard-only)
   - Log — append a log message
   - Timeline — open timeline overlay
   - Archive/Unarchive — toggle archive state with confirmation
+  - Delete — permanently remove selected archived task (irreversible)
   - Reload — refresh the board
 
 All destructive operations require confirmation. On conflicts (changed elsewhere), the TUI reloads and preserves selection when possible.
@@ -214,6 +216,7 @@ Smoke Test (developer-only)
 Notes
 
 - Archived tasks block all mutations except `unarchive`
+- `delete_task` permanently removes an archived task folder (task.json, events.jsonl, content.md). Requires the correct `expected_last_seq` and the task to be archived.
 - All mutating tools require `expected_last_seq` to guard against races
 - IDs are ULIDs for stable sorting and readability
 - Task content is stored in `.wind-task/<id>/content.md` and exposed via `tasks://content/{id}`

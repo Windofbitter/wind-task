@@ -19,6 +19,7 @@ import { ulid } from './id.js';
 export class ConflictError extends Error {}
 export class ArchivedError extends Error {}
 export class NotFoundError extends Error {}
+export class PreconditionError extends Error {}
 
 function nowISO(): string {
   return new Date().toISOString();
@@ -251,6 +252,19 @@ export class TaskStore {
     await this.appendEvent(id, event);
     await this.writeTask(task);
     return task;
+  }
+
+  async deleteTask(id: string, opts: MutationOptions): Promise<{ id: string }> {
+    const task = await this.getTask(id);
+    // Only allow deletion of archived tasks
+    if (!task.archived_at) {
+      throw new PreconditionError(`Task ${id} must be archived before deletion`);
+    }
+    this.ensureExpectedSeq(task, opts.expected_last_seq);
+    const dir = this.taskDir(id);
+    // Remove the entire task directory (task.json, events.jsonl, content.md, etc.)
+    await fs.rm(dir, { recursive: true, force: false });
+    return { id };
   }
 
   async listTasks(includeArchived = true): Promise<Task[]> {

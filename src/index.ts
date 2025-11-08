@@ -8,7 +8,7 @@ import {
   ListToolsRequestSchema,
   CallToolRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
-import { TaskStore, ConflictError, ArchivedError, NotFoundError } from './store.js';
+import { TaskStore, ConflictError, ArchivedError, NotFoundError, PreconditionError } from './store.js';
 import { loadProjects, isValidProjectName, configPath, saveProjects, normalizeBaseDir, resolveStoreDir } from './config.js';
 import { readFile } from 'fs/promises';
 
@@ -304,6 +304,21 @@ async function main() {
             additionalProperties: false,
           },
         },
+        {
+          name: 'delete_task',
+          description: 'Permanently delete an archived task (irreversible)',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              project: { type: 'string' },
+              id: { type: 'string' },
+              expected_last_seq: { type: 'number' },
+              actor: { type: 'string' },
+            },
+            required: ['project', 'id', 'expected_last_seq', 'actor'],
+            additionalProperties: false,
+          },
+        },
       ],
     } as any;
   });
@@ -404,6 +419,19 @@ async function main() {
           task = await s.unarchive(String(id), { expected_last_seq: Number(expected_last_seq), actor: String(actor) });
           break;
         }
+        case 'delete_task': {
+          const { project, id, expected_last_seq, actor } = args || {};
+          const s = await storeFor(project ? String(project) : undefined);
+          const res = await s.deleteTask(String(id), { expected_last_seq: Number(expected_last_seq), actor: String(actor) });
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify({ ok: true, deleted: true, id: res.id }, null, 2),
+              },
+            ],
+          } as any;
+        }
         default:
           throw new Error(`Unknown tool: ${name}`);
       }
@@ -437,6 +465,7 @@ function normalizeError(err: any) {
   if (err instanceof ConflictError) return { ok: false, error: 'conflict', message: err.message };
   if (err instanceof ArchivedError) return { ok: false, error: 'archived', message: err.message };
   if (err instanceof NotFoundError) return { ok: false, error: 'not_found', message: err.message };
+  if (err instanceof PreconditionError) return { ok: false, error: 'precondition', message: err.message };
   return { ok: false, error: 'unknown', message: String(err?.message ?? err) };
 }
 
