@@ -33,8 +33,9 @@ export function showConfirmDialog(
   onConfirm: () => void,
   onClose?: () => void,
 ) {
-  const overlay = blessed.box({ top: 'center', left: 'center', width: '60%', height: 7, border: 'line', label: ` ${title} `, tags: true, keys: true });
+  const overlay = blessed.box({ top: 'center', left: 'center', width: '60%', height: 8, border: 'line', label: ` ${title} `, tags: true, keys: true });
   blessed.text({ parent: overlay, top: 2, left: 2, content: message });
+  blessed.text({ parent: overlay, top: 4, left: 2, content: String(t('dlg_confirm_hint')) });
   screen.append(overlay);
   overlay.focus();
   const close = () => {
