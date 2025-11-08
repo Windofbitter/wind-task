@@ -1,6 +1,6 @@
 {
   "name": "wind-task",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "type": "module",
   "description": "Minimal MCP server for file-backed tasks with TODO/ACTIVE/DONE and archive",
   "scripts": {

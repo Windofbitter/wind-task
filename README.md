@@ -191,7 +191,7 @@ Terminal TUI (developer visualization)
   - Timeline overlay: `Esc` closes overlay
   - Common: `F2` toggle language (English/中文), `r` reload, `q`/`Ctrl+C` quit
 
-By default, the TUI reads from `<cwd>/.wind-task`. With `--project`, it reads the configured project’s storage (resolved as `<root>/.wind-task`). It is read-only (no mutations).
+By default, the TUI reads from `<cwd>/.wind-task`. With `--project`, it reads the configured project’s storage (resolved as `<root>/.wind-task`).
 
 Actions (keyboard-only)
 

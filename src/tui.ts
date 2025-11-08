@@ -510,6 +510,7 @@ async function main() {
     setColumnStyles();
     updateHeader();
     updateStatusFrom(activeList());
+    renderActionBar();
     screen.render();
   }
 
@@ -521,6 +522,7 @@ async function main() {
     setColumnStyles();
     updateHeader();
     updateStatusFrom(list);
+    renderActionBar();
     screen.render();
   }
 
@@ -532,6 +534,7 @@ async function main() {
     setColumnStyles();
     updateHeader();
     updateStatusFrom(list);
+    renderActionBar();
     screen.render();
   }
 
@@ -900,6 +903,7 @@ async function main() {
       if (key.name === 'up' || key.name === 'down' || key.name === 'home' || key.name === 'end' || key.name === 'pageup' || key.name === 'pagedown') {
         setImmediate(() => {
           updateStatusFrom(activeList());
+          renderActionBar();
           screen.render();
         });
       }
@@ -927,6 +931,17 @@ async function main() {
     try { layout.cols.ACTIVE.setLabel(` ${stateLabel('ACTIVE')} `); } catch {}
     try { layout.cols.DONE.setLabel(` ${stateLabel('DONE')} `); } catch {}
     try { layout.cols.ARCHIVED.setLabel(` ${stateLabel('ARCHIVED')} `); } catch {}
+    // Update action labels
+    actions = [
+      { key: 'new', label: t('btn_new'), handler: actionNew },
+      { key: 'move', label: t('btn_move'), handler: actionMove },
+      { key: 'retitle', label: t('btn_retitle'), handler: actionRetitle },
+      { key: 'log', label: t('btn_log'), handler: actionLog },
+      { key: 'timeline', label: t('btn_timeline'), handler: actionTimeline },
+      { key: 'archive', label: selectedTaskMeta()?.archived_at ? t('btn_unarchive') : t('btn_archive'), handler: actionArchiveToggle },
+      { key: 'reload', label: t('btn_reload'), handler: actionReload },
+    ];
+    renderActionBar();
     updateHeader();
     updateStatusFrom(activeList());
     screen.render();
@@ -938,6 +953,20 @@ async function main() {
     focusArea = focusArea === 'actionbar' ? 'columns' : 'actionbar';
     updateHeader();
     screen.render();
+  });
+
+  // Tab/Shift-Tab to move in action bar
+  screen.key(['tab'], () => {
+    if (overlayActive) return;
+    if (focusArea !== 'actionbar') return;
+    actionIdx = (actionIdx + 1) % actions.length;
+    renderActionBar();
+  });
+  screen.key(['S-tab'], () => {
+    if (overlayActive) return;
+    if (focusArea !== 'actionbar') return;
+    actionIdx = (actionIdx - 1 + actions.length) % actions.length;
+    renderActionBar();
   });
 }
 
