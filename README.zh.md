@@ -4,7 +4,7 @@ MCP 任务服务器
 
 最小化的 MCP 服务器，供 LLM 代理管理基于文件的简单任务。任务生命周期为 TODO → ACTIVE → DONE，另有 ARCHIVED 作为锁定状态（单独的看板列）。每个任务都有追加式事件日志，提供完整的历史和上下文。
 
-![Wind Task Board](docs/assets/task_board.png)
+![Wind Task Board](docs/assets/task_board_chinese.png)
 
 特性
 
