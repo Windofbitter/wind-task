@@ -193,6 +193,20 @@ Terminal TUI (developer visualization)
 
 By default, the TUI reads from `<cwd>/.wind-task`. With `--project`, it reads the configured project’s storage (resolved as `<root>/.wind-task`). It is read-only (no mutations).
 
+Actions (keyboard-only)
+
+- Focus the action bar: press `F6`. Use `←/→` or `Tab/Shift+Tab` to choose an action, `Enter` to run, `Esc` to go back.
+- Available actions:
+  - New — create task (defaults to current column’s state)
+  - Move — move selected task to TODO/ACTIVE/DONE
+  - Retitle — change selected task’s title
+  - Log — append a log message
+  - Timeline — open timeline overlay
+  - Archive/Unarchive — toggle archive state with confirmation
+  - Reload — refresh the board
+
+All destructive operations require confirmation. On conflicts (changed elsewhere), the TUI reloads and preserves selection when possible.
+
 Smoke Test (developer-only)
 
 - A development helper script exists at `scripts/mcp-smoke.mjs`. It is not part of the recommended user flow and may rely on environment variables. Prefer using an MCP host to call tools against the running server.

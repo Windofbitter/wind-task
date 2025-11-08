@@ -187,7 +187,7 @@ MCP 宿主集成
 
 - 启动：
 
-  - CWD 模式（推荐）：`cd /path/to/repo && npm run tui` 或 `npx wind-task-tui@latest`
+ - CWD 模式（推荐）：`cd /path/to/repo && npm run tui` 或 `npx wind-task-tui@latest`
   - 使用配置覆盖：`wind-task-tui --project projA`（读取 `~/.wind-task/config.json`）
 
 - 控制：
@@ -196,7 +196,21 @@ MCP 宿主集成
   - 时间线浮层：`Esc` 关闭
   - 通用：`F2` 切换语言（English/中文），`r` 刷新，`q`/`Ctrl+C` 退出
 
-默认情况下，TUI 从 `<cwd>/.wind-task` 读取；使用 `--project` 时，从配置的项目存储中读取（解析为 `<root>/.wind-task`）。TUI 为只读（不提供修改）。
+默认情况下，TUI 从 `<cwd>/.wind-task` 读取；使用 `--project` 时，从配置的项目存储中读取（解析为 `<root>/.wind-task`）。
+
+操作（仅键盘）
+
+- 聚焦操作栏：按 `F6`。使用 `←/→` 或 `Tab/Shift+Tab` 选择，`Enter` 执行，`Esc` 返回。
+- 可用操作：
+  - 新建 — 创建任务（默认以当前列状态）
+  - 移动 — 将任务移动到 TODO/ACTIVE/DONE
+  - 改名 — 修改任务标题
+  - 日志 — 追加一条日志
+  - 时间线 — 打开时间线浮层
+  - 归档/取消归档 — 需确认
+  - 刷新 — 刷新看板
+
+破坏性操作均需确认。发生并发冲突（其他地方已修改）时会自动刷新，并尽量保留选择位置。
 
 冒烟测试（开发者用途）
 

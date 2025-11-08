@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 import blessed from 'blessed';
-import { TaskStore } from './store.js';
+import { TaskStore, ConflictError, ArchivedError } from './store.js';
 import { BoardView } from './types.js';
 import { loadProjects, resolveStoreDir } from './config.js';
 import { join } from 'path';
+import { userInfo } from 'os';
 
 type Lang = 'en' | 'zh';
 
@@ -13,8 +14,9 @@ const I18N = {
   en: {
     title: 'Wind Task Board',
     status_ready: 'Ready',
-    help_column: '(←/→: column, Enter: select, F2: language, r: reload, q: quit)',
-    help_task: '(↑/↓: move, ←/→: switch, Enter: content, t: timeline, Esc: back, F2: language, r: reload, q: quit)',
+    help_column: '(←/→: column, Enter: select, F2: language, F6: actions, r: reload, q: quit)',
+    help_task: '(↑/↓: move, ←/→: switch, Enter: content, t: timeline, Esc: back, F2: language, F6: actions, r: reload, q: quit)',
+    help_actions: '(Tab/←/→: choose, Enter: run, Esc: back)',
     col_TODO: 'TODO',
     col_ACTIVE: 'ACTIVE',
     col_DONE: 'DONE',
@@ -23,13 +25,42 @@ const I18N = {
     no_tasks: 'No tasks',
     archived_suffix: 'archived',
     updated_prefix: 'updated',
-    reloading: 'Reloading...'
+    reloading: 'Reloading...',
+    // Action bar
+    btn_new: 'New',
+    btn_move: 'Move',
+    btn_retitle: 'Retitle',
+    btn_log: 'Log',
+    btn_timeline: 'Timeline',
+    btn_archive: 'Archive',
+    btn_unarchive: 'Unarchive',
+    btn_reload: 'Reload',
+    btn_help: 'Help',
+    // Dialogs
+    dlg_new_title: 'Create Task',
+    dlg_move_title: 'Move to State',
+    dlg_retitle_title: 'Retitle Task',
+    dlg_log_title: 'Append Log',
+    dlg_archive_title: 'Archive Task',
+    dlg_unarchive_title: 'Unarchive Task',
+    field_title: 'Title',
+    field_summary: 'Summary',
+    field_message: 'Message',
+    field_reason: 'Reason',
+    btn_confirm: 'Confirm',
+    btn_cancel: 'Cancel',
+    // Status / errors
+    err_no_task: 'No task selected',
+    err_archived: 'Task is archived',
+    info_conflict: 'Changed elsewhere; reloading…',
+    info_done: 'Done'
   },
   zh: {
     title: 'Wind 任务看板',
     status_ready: '准备就绪',
-    help_column: '（←/→：列，Enter：选择，F2：语言，r：刷新，q：退出）',
-    help_task: '（↑/↓：移动，←/→：切换，Enter：内容，t：时间线，Esc：返回，F2：语言，r：刷新，q：退出）',
+    help_column: '（←/→：列，Enter：选择，F2：语言，F6：操作，r：刷新，q：退出）',
+    help_task: '（↑/↓：移动，←/→：切换，Enter：内容，t：时间线，Esc：返回，F2：语言，F6：操作，r：刷新，q：退出）',
+    help_actions: '（Tab/←/→：选择，Enter：执行，Esc：返回）',
     col_TODO: '待办',
     col_ACTIVE: '进行中',
     col_DONE: '已完成',
@@ -38,7 +69,35 @@ const I18N = {
     no_tasks: '无任务',
     archived_suffix: '已归档',
     updated_prefix: '更新于',
-    reloading: '重新加载中...'
+    reloading: '重新加载中...',
+    // Action bar
+    btn_new: '新建',
+    btn_move: '移动',
+    btn_retitle: '改名',
+    btn_log: '日志',
+    btn_timeline: '时间线',
+    btn_archive: '归档',
+    btn_unarchive: '取消归档',
+    btn_reload: '刷新',
+    btn_help: '帮助',
+    // Dialogs
+    dlg_new_title: '新建任务',
+    dlg_move_title: '移动到状态',
+    dlg_retitle_title: '修改标题',
+    dlg_log_title: '追加日志',
+    dlg_archive_title: '归档任务',
+    dlg_unarchive_title: '取消归档任务',
+    field_title: '标题',
+    field_summary: '摘要',
+    field_message: '消息',
+    field_reason: '原因',
+    btn_confirm: '确认',
+    btn_cancel: '取消',
+    // Status / errors
+    err_no_task: '未选择任务',
+    err_archived: '任务已归档',
+    info_conflict: '已在其他地方变更；正在刷新…',
+    info_done: '已完成'
   }
 } as const;
 
@@ -88,6 +147,15 @@ function makeLayout(screen: blessed.Widgets.Screen) {
     content: `{bold}${t('title')}{/bold}`
   });
 
+  const actionBar = blessed.box({
+    parent: screen,
+    top: 1,
+    height: 1,
+    width: '100%',
+    tags: true,
+    content: ''
+  });
+
   const status = blessed.box({
     parent: screen,
     bottom: 0,
@@ -101,13 +169,13 @@ function makeLayout(screen: blessed.Widgets.Screen) {
   const lefts = ['0%', '25%', '50%', '75%'];
 
   const cols: Record<ColumnName, blessed.Widgets.ListElement> = {
-    TODO: blessed.list({ parent: screen, label: ` ${stateLabel('TODO')} `, border: 'line', keys: true, tags: true, top: 1, left: lefts[0], width: '25%', height: '100%-2', style: { selected: { inverse: true, bold: true }, item: { } }, scrollbar: { ch: ' ', track: { bg: 'gray' }, style: { bg: 'white' } } }),
-    ACTIVE: blessed.list({ parent: screen, label: ` ${stateLabel('ACTIVE')} `, border: 'line', keys: true, tags: true, top: 1, left: lefts[1], width: '25%', height: '100%-2', style: { selected: { inverse: true, bold: true }, item: { } }, scrollbar: { ch: ' ', track: { bg: 'gray' }, style: { bg: 'white' } } }),
-    DONE: blessed.list({ parent: screen, label: ` ${stateLabel('DONE')} `, border: 'line', keys: true, tags: true, top: 1, left: lefts[2], width: '25%', height: '100%-2', style: { selected: { inverse: true, bold: true }, item: { } }, scrollbar: { ch: ' ', track: { bg: 'gray' }, style: { bg: 'white' } } }),
-    ARCHIVED: blessed.list({ parent: screen, label: ` ${stateLabel('ARCHIVED')} `, border: 'line', keys: true, tags: true, top: 1, left: lefts[3], width: '25%', height: '100%-2', style: { selected: { inverse: true, bold: true }, item: { } }, scrollbar: { ch: ' ', track: { bg: 'gray' }, style: { bg: 'white' } } }),
+    TODO: blessed.list({ parent: screen, label: ` ${stateLabel('TODO')} `, border: 'line', keys: true, tags: true, top: 2, left: lefts[0], width: '25%', height: '100%-3', style: { selected: { inverse: true, bold: true }, item: { } }, scrollbar: { ch: ' ', track: { bg: 'gray' }, style: { bg: 'white' } } }),
+    ACTIVE: blessed.list({ parent: screen, label: ` ${stateLabel('ACTIVE')} `, border: 'line', keys: true, tags: true, top: 2, left: lefts[1], width: '25%', height: '100%-3', style: { selected: { inverse: true, bold: true }, item: { } }, scrollbar: { ch: ' ', track: { bg: 'gray' }, style: { bg: 'white' } } }),
+    DONE: blessed.list({ parent: screen, label: ` ${stateLabel('DONE')} `, border: 'line', keys: true, tags: true, top: 2, left: lefts[2], width: '25%', height: '100%-3', style: { selected: { inverse: true, bold: true }, item: { } }, scrollbar: { ch: ' ', track: { bg: 'gray' }, style: { bg: 'white' } } }),
+    ARCHIVED: blessed.list({ parent: screen, label: ` ${stateLabel('ARCHIVED')} `, border: 'line', keys: true, tags: true, top: 2, left: lefts[3], width: '25%', height: '100%-3', style: { selected: { inverse: true, bold: true }, item: { } }, scrollbar: { ch: ' ', track: { bg: 'gray' }, style: { bg: 'white' } } }),
   } as any;
 
-  return { header, status, cols, order: columnOrder };
+  return { header, actionBar, status, cols, order: columnOrder };
 }
 
 function formatItem(id: string, title: string, updated: string, archivedAt?: string) {
@@ -382,6 +450,7 @@ async function main() {
   let mode: Mode = 'column';
   let activeColIdx = 0;
   let overlayActive = false;
+  let focusArea: 'columns' | 'actionbar' = 'columns';
   const selectedIdxByCol: Record<ColumnName, number> = {
     TODO: 0,
     ACTIVE: 0,
@@ -394,8 +463,13 @@ async function main() {
   }
 
   function updateHeader() {
-    const modeHelp = mode === 'column' ? t('help_column') : t('help_task');
-    layout.header.setContent(`{bold}${t('title')}{/bold}  ${modeHelp}`);
+    const base = `{bold}${t('title')}{/bold}`;
+    if (focusArea === 'actionbar') {
+      layout.header.setContent(`${base}  ${t('help_actions')}`);
+    } else {
+      const modeHelp = mode === 'column' ? t('help_column') : t('help_task');
+      layout.header.setContent(`${base}  ${modeHelp}`);
+    }
   }
 
   function setColumnStyles() {
@@ -480,19 +554,300 @@ async function main() {
   // Initial focus and styles
   focusColumn(0);
 
+  // Actor id for mutations
+  function actorId(): string {
+    try {
+      const u = userInfo();
+      return `user:${u.username}:tui`;
+    } catch {
+      return 'actor:tui';
+    }
+  }
+
+  // Generic status helper
+  function setStatusMessage(msg: string) {
+    layout.status.setContent(msg);
+    screen.render();
+  }
+
+  // Build Action Bar (keyboard-only pseudo buttons)
+  type ActionItem = { key: string; label: string; handler: () => Promise<void> | void };
+  let actions: ActionItem[] = [];
+  let actionIdx = 0;
+
+  function selectedTaskId(): string | null {
+    const list = activeList();
+    const idx = typeof (list as any).selected === 'number' ? (list as any).selected : 0;
+    const items: any[] = (list as any).taskItems ?? [];
+    const id = items[idx]?.id || items[items.length - 1]?.id;
+    return id || null;
+  }
+
+  function selectedTaskMeta(): any | null {
+    const list = activeList();
+    const idx = typeof (list as any).selected === 'number' ? (list as any).selected : 0;
+    const items: any[] = (list as any).taskItems ?? [];
+    return items[idx] || null;
+  }
+
+  async function mutateThenReload(run: (expected: number) => Promise<void>) {
+    const id = selectedTaskId();
+    if (!id) { setStatusMessage(t('err_no_task')); return; }
+    try {
+      const t0 = await store.getTask(id);
+      await run(t0.last_event_seq);
+      // reload and try to focus the task
+      await renderBoard(layout, store);
+      // try focus by id
+      for (let i = 0; i < layout.order.length; i++) {
+        const name = layout.order[i] as ColumnName;
+        const list = layout.cols[name] as any;
+        const items: any[] = list.taskItems ?? [];
+        const idx = items.findIndex((it) => it.id === id);
+        if (idx >= 0) {
+          activeColIdx = i;
+          mode = 'task';
+          focusArea = 'columns';
+          list.select(idx);
+          setColumnStyles();
+          updateHeader();
+          updateStatusFrom(list);
+          screen.render();
+          return;
+        }
+      }
+      // fallback
+      setColumnStyles();
+      updateHeader();
+      updateStatusFrom(activeList());
+      screen.render();
+    } catch (err: any) {
+      if (err instanceof ConflictError) {
+        setStatusMessage(t('info_conflict'));
+        await renderBoard(layout, store);
+        setColumnStyles();
+        updateHeader();
+        updateStatusFrom(activeList());
+        screen.render();
+        return;
+      }
+      if (err instanceof ArchivedError) {
+        setStatusMessage(t('err_archived'));
+        return;
+      }
+      setStatusMessage(String(err?.message ?? err));
+    }
+  }
+
+  // Dialog helpers
+  function showInputDialog(title: string, label: string, initial: string, onSubmit: (value: string) => void) {
+    const overlay = blessed.box({ top: 'center', left: 'center', width: '60%', height: 7, border: 'line', label: ` ${title} `, tags: true });
+    const lbl = blessed.text({ parent: overlay, top: 1, left: 2, content: `${label}:` });
+    const tb = blessed.textbox({ parent: overlay, top: 2, left: 2, height: 1, inputOnFocus: true, width: '90%', keys: true, mouse: false });
+    const btnOk = blessed.button({ parent: overlay, bottom: 1, left: 2, width: 12, height: 1, content: `[ ${t('btn_confirm')} ]`, keys: true });
+    const btnCancel = blessed.button({ parent: overlay, bottom: 1, left: 16, width: 12, height: 1, content: `[ ${t('btn_cancel')} ]`, keys: true });
+    screen.append(overlay);
+    overlay.focus();
+    tb.setValue(initial || '');
+    tb.focus();
+    const close = () => { try { overlay.destroy(); } catch {}; screen.render(); };
+    btnCancel.on('press', () => { close(); });
+    btnOk.on('press', () => { const v = (tb as any).getValue?.() ?? ''; close(); onSubmit(String(v).trim()); });
+    overlay.key(['escape'], () => { close(); });
+    tb.key(['enter'], () => { const v = (tb as any).getValue?.() ?? ''; close(); onSubmit(String(v).trim()); });
+    screen.render();
+  }
+
+  function showConfirmDialog(title: string, message: string, onConfirm: () => void) {
+    const overlay = blessed.box({ top: 'center', left: 'center', width: '60%', height: 7, border: 'line', label: ` ${title} `, tags: true });
+    blessed.text({ parent: overlay, top: 2, left: 2, content: message });
+    const btnOk = blessed.button({ parent: overlay, bottom: 1, left: 2, width: 12, height: 1, content: `[ ${t('btn_confirm')} ]`, keys: true });
+    const btnCancel = blessed.button({ parent: overlay, bottom: 1, left: 16, width: 12, height: 1, content: `[ ${t('btn_cancel')} ]`, keys: true });
+    screen.append(overlay);
+    overlay.focus();
+    const close = () => { try { overlay.destroy(); } catch {}; screen.render(); };
+    btnCancel.on('press', () => { close(); });
+    btnOk.on('press', () => { close(); onConfirm(); });
+    overlay.key(['escape'], () => { close(); });
+    screen.render();
+  }
+
+  function showSelectStateDialog(current: 'TODO'|'ACTIVE'|'DONE', onSubmit: (state: 'TODO'|'ACTIVE'|'DONE') => void) {
+    const overlay = blessed.box({ top: 'center', left: 'center', width: 40, height: 9, border: 'line', label: ` ${t('dlg_move_title')} `, keys: true });
+    const list = blessed.list({ parent: overlay, top: 1, left: 1, width: '98%', height: 5, keys: true, vi: true, items: ['TODO','ACTIVE','DONE'] });
+    const btnCancel = blessed.button({ parent: overlay, bottom: 1, left: 2, width: 12, height: 1, content: `[ ${t('btn_cancel')} ]`, keys: true });
+    screen.append(overlay);
+    const idx = ['TODO','ACTIVE','DONE'].indexOf(current);
+    if (idx >= 0) (list as any).select(idx);
+    list.focus();
+    const close = () => { try { overlay.destroy(); } catch {}; screen.render(); };
+    btnCancel.on('press', () => { close(); });
+    list.key(['enter'], () => {
+      const i = typeof (list as any).selected === 'number' ? (list as any).selected : 0;
+      const value = (['TODO','ACTIVE','DONE'] as const)[Math.max(0, Math.min(2, i))];
+      close();
+      onSubmit(value);
+    });
+    overlay.key(['escape'], () => { close(); });
+    screen.render();
+  }
+
+  function renderActionBar() {
+    const parts = actions.map((a, i) => i === actionIdx ? `{inverse} ${a.label} {/inverse}` : ` ${a.label} `);
+    layout.actionBar.setContent(parts.join(' '));
+    screen.render();
+  }
+
+  async function actionNew() {
+    const currentCol = layout.order[activeColIdx] as ColumnName;
+    showInputDialog(t('dlg_new_title'), t('field_title'), '', async (title) => {
+      if (!title) return;
+      try {
+        const created = await store.createTask(title, undefined, { actor: actorId() });
+        // set state if needed
+        if (currentCol !== 'TODO') {
+          await store.setState(created.id, currentCol, { expected_last_seq: created.last_event_seq, actor: actorId() });
+        }
+        await renderBoard(layout, store);
+        // focus created task
+        for (let i = 0; i < layout.order.length; i++) {
+          const name = layout.order[i] as ColumnName;
+          const list = layout.cols[name] as any;
+          const items: any[] = list.taskItems ?? [];
+          const idx = items.findIndex((it) => it.id === created.id);
+          if (idx >= 0) {
+            activeColIdx = i;
+            mode = 'task';
+            focusArea = 'columns';
+            list.select(idx);
+            setColumnStyles();
+            updateHeader();
+            updateStatusFrom(list);
+            screen.render();
+            return;
+          }
+        }
+        setStatusMessage(String(t('info_done')));
+      } catch (err: any) {
+        setStatusMessage(String(err?.message ?? err));
+      }
+    });
+  }
+
+  async function actionMove() {
+    const meta = selectedTaskMeta();
+    if (!meta) { setStatusMessage(t('err_no_task')); return; }
+    if (meta.archived_at) { setStatusMessage(t('err_archived')); return; }
+    showSelectStateDialog(meta.state as any, async (target) => {
+      await mutateThenReload(async (expected) => {
+        await store.setState(meta.id, target, { expected_last_seq: expected, actor: actorId() });
+      });
+    });
+  }
+
+  async function actionRetitle() {
+    const meta = selectedTaskMeta();
+    if (!meta) { setStatusMessage(t('err_no_task')); return; }
+    if (meta.archived_at) { setStatusMessage(t('err_archived')); return; }
+    showInputDialog(t('dlg_retitle_title'), t('field_title'), meta.title || '', async (value) => {
+      if (!value) return;
+      await mutateThenReload(async (expected) => {
+        await store.retitle(meta.id, value, { expected_last_seq: expected, actor: actorId() });
+      });
+    });
+  }
+
+  async function actionLog() {
+    const meta = selectedTaskMeta();
+    if (!meta) { setStatusMessage(t('err_no_task')); return; }
+    if (meta.archived_at) { setStatusMessage(t('err_archived')); return; }
+    showInputDialog(t('dlg_log_title'), t('field_message'), '', async (value) => {
+      if (!value) return;
+      await mutateThenReload(async (expected) => {
+        await store.appendLog(meta.id, value, { expected_last_seq: expected, actor: actorId() });
+      });
+    });
+  }
+
+  async function actionArchiveToggle() {
+    const meta = selectedTaskMeta();
+    if (!meta) { setStatusMessage(t('err_no_task')); return; }
+    if (meta.archived_at) {
+      showConfirmDialog(t('dlg_unarchive_title'), meta.title, async () => {
+        await mutateThenReload(async (expected) => {
+          await store.unarchive(meta.id, { expected_last_seq: expected, actor: actorId() });
+        });
+      });
+    } else {
+      // optional reason
+      showInputDialog(t('dlg_archive_title'), t('field_reason'), '', async (reason) => {
+        await mutateThenReload(async (expected) => {
+          await store.archive(meta.id, reason || undefined, { expected_last_seq: expected, actor: actorId() });
+        });
+      });
+    }
+  }
+
+  async function actionTimeline() {
+    const meta = selectedTaskMeta();
+    if (!meta) { setStatusMessage(t('err_no_task')); return; }
+    overlayActive = true;
+    const prevList = activeList();
+    await showTimeline(screen, store, meta.id, () => {
+      overlayActive = false;
+      try { (prevList as any).focus(); } catch {}
+    });
+    screen.render();
+  }
+
+  async function actionReload() {
+    layout.status.setContent(t('reloading'));
+    screen.render();
+    await renderBoard(layout, store);
+    setColumnStyles();
+    updateHeader();
+    updateStatusFrom(activeList());
+    screen.render();
+  }
+
+  actions = [
+    { key: 'new', label: t('btn_new'), handler: actionNew },
+    { key: 'move', label: t('btn_move'), handler: actionMove },
+    { key: 'retitle', label: t('btn_retitle'), handler: actionRetitle },
+    { key: 'log', label: t('btn_log'), handler: actionLog },
+    { key: 'timeline', label: t('btn_timeline'), handler: actionTimeline },
+    { key: 'archive', label: t('btn_archive'), handler: actionArchiveToggle },
+    { key: 'reload', label: t('btn_reload'), handler: actionReload },
+  ];
+  renderActionBar();
+
   // Column navigation on arrows
   screen.key(['left'], () => {
     if (overlayActive) return; // Don't navigate when overlay is active
+    if (focusArea === 'actionbar') { // move action selection
+      actionIdx = (actionIdx - 1 + actions.length) % actions.length;
+      renderActionBar();
+      return;
+    }
     moveFocus(-1);
   });
   screen.key(['right'], () => {
     if (overlayActive) return; // Don't navigate when overlay is active
+    if (focusArea === 'actionbar') { // move action selection
+      actionIdx = (actionIdx + 1) % actions.length;
+      renderActionBar();
+      return;
+    }
     moveFocus(1);
   });
 
   // Enter to select column or open content
   screen.key(['enter'], async () => {
     if (overlayActive) return; // Don't process Enter when overlay is active
+    if (focusArea === 'actionbar') {
+      try { await actions[actionIdx].handler(); } catch {}
+      return;
+    }
     if (mode === 'column') {
       enterColumn();
       return;
@@ -516,6 +871,7 @@ async function main() {
   // Esc to back out of task mode
   screen.key(['escape'], () => {
     if (overlayActive) return; // overlay handles its own Esc
+    if (focusArea === 'actionbar') { focusArea = 'columns'; updateHeader(); screen.render(); return; }
     if (mode === 'task') leaveColumn();
   });
 
@@ -573,6 +929,14 @@ async function main() {
     try { layout.cols.ARCHIVED.setLabel(` ${stateLabel('ARCHIVED')} `); } catch {}
     updateHeader();
     updateStatusFrom(activeList());
+    screen.render();
+  });
+
+  // F6: toggle focus to action bar
+  screen.key(['f6'], () => {
+    if (overlayActive) return;
+    focusArea = focusArea === 'actionbar' ? 'columns' : 'actionbar';
+    updateHeader();
     screen.render();
   });
 }
