@@ -243,8 +243,7 @@ async function main() {
     focusColumn(activeColIdx);
   }
 
-  // Initial focus and styles
-  focusColumn(0);
+  // Initial focus and styles are set after action bar is initialized
 
   // Actor id for mutations
   function actorId(): string {
@@ -512,6 +511,7 @@ async function main() {
     { key: 'reload', label: t('btn_reload'), handler: actionReload },
   ];
   renderActionBar();
+  focusColumn(0);
 
   // Column navigation on arrows
   screen.key(['left'], () => {
