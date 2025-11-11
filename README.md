@@ -29,7 +29,7 @@ Quick Start
 - Start server (stdio): `npm run dev`
 - Build and run: `npm run build && npm start`
 - TUI (read‑only board and timeline): `npm run tui`
-  - Or run via npx: `npx wind-task-tui@latest`
+  - Or via npx: `npx wind-task@latest wind-task-tui`
   - Server via npx: `npx wind-task@latest`
 
 Config Setup
@@ -183,8 +183,9 @@ Terminal TUI (developer visualization)
 
 - Start the TUI:
 
-  - CWD mode (recommended): `cd /path/to/repo && npm run tui` or `npx wind-task-tui@latest`
+  - CWD mode (recommended): `cd /path/to/repo && npm run tui` or `npx wind-task@latest wind-task-tui`
   - Config override: `wind-task-tui --project projA` (uses `~/.wind-task/config.json`)
+    - Or via npx: `npx wind-task@latest wind-task-tui --project projA`
 
 - Controls:
   - Column mode: `←/→` switch columns, `Enter` enters column

@@ -29,7 +29,7 @@ MCP 任务服务器
 - 启动服务器（stdio）：`npm run dev`
 - 构建并运行：`npm run build && npm start`
  - 启动 TUI（只读看板和时间线）：`npm run tui`
-  - 或通过 npx 运行：`npx wind-task-tui@latest`
+  - 或通过 npx 运行：`npx wind-task@latest wind-task-tui`
   - 服务器通过 npx：`npx wind-task@latest`
 
 配置准备
@@ -187,8 +187,9 @@ MCP 宿主集成
 
 - 启动：
 
- - CWD 模式（推荐）：`cd /path/to/repo && npm run tui` 或 `npx wind-task-tui@latest`
+ - CWD 模式（推荐）：`cd /path/to/repo && npm run tui` 或 `npx wind-task@latest wind-task-tui`
   - 使用配置覆盖：`wind-task-tui --project projA`（读取 `~/.wind-task/config.json`）
+    - 或通过 npx：`npx wind-task@latest wind-task-tui --project projA`
 
 - 控制：
   - 列模式：`←/→` 切换列，`Enter` 进入列
